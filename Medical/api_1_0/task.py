@@ -1,26 +1,63 @@
 from . import api
-from Medical.models import User
-from flask import current_app,jsonify,request,g
+from flask import current_app,jsonify,request
 from Medical import csrf,db
-from Medical.models import ExtractModel,TransformModel,LoaderModel,TaskModel
-from Medical.etl.extracter.extract import Extract
-from Medical.etl.loader.loader import LoadData
-from Medical.etl.transformer import BaseTransForm
-from Medical.etl.task import BaseTask
-from Medical.api_1_0.utils.verify_task import Verify
+from Medical.models import ExtractModel,TransformModel,LoaderModel,TaskModel,ResourceType
 import traceback,random, datetime
+from Medical.api_1_0.utils.connect import TestConnect
 
 
-@api.route("/extracter",methods=["get"])  # 查询所有的数据输入方法
-def extracter():
-    try:
-        extracts = ExtractModel.query.all()
-        extract_app = []
-        for extract in extracts:
-            extract_app.append(extract.to_dict())
-        return jsonify({"status":1,"data":extract_app})
-    except Exception as e:
-        return jsonify({"status":0,"data":e.__str__()})
+@csrf.exempt
+@api.route("/resource",methods=["GET","POST"])  # get查询所有的可用数据源,post连接测试,并获取所有字段
+def resource():
+
+    # 查询连接资源
+    if request.method == "GET":
+        try:
+            resources = ResourceType.query.all()
+            resource_app = []
+            for resource in resources:
+                data = resource.to_dict()
+                data["description"] = eval(data["description"])
+                resource_app.append(data)
+            return jsonify({"status":1,"data":resource_app})
+        except Exception as e:
+            return jsonify({"status":0,"data":e.__str__()})
+    elif request.method == "POST":
+        try:
+            dict_data = request.get_json()  # {"description": {"database": "pyetl","ip": "192.168.1.100","password": "12345678","port": 3306,
+                                            # "user": "root"},"id": 1,"type": "SQLserver","sql":"","table":""}
+
+            type_id = dict_data.get("id")
+            if not type_id:
+                raise ValueError("类型id不存在")
+            # 校验参数
+            if not all([dict_data.get("description"), dict_data["id"], dict_data.get("type"), dict_data.get("sql"),
+                        dict_data.get("table"), dict_data["description"].get("database"),
+                        dict_data["description"].get("ip"), dict_data["description"].get("password"),
+                        dict_data["description"].get("user")]):
+                raise ValueError("参数不完整")
+            if int(type_id) == 1:
+                if not all([dict_data["description"].get("port")]):
+                    raise ValueError("参数不完整,缺少port参数")
+                # 获取连接资源的字段
+                connect = TestConnect()
+                result = connect.mysql_test(dict_data)
+                result = [list(res)[0] for res in result]
+            elif int(type_id) == 2:
+                # 获取连接资源的字段
+                connect = TestConnect()
+                result = connect.sqlserver_test(dict_data)
+                result = [list(res)[0] for res in result]
+            else:
+                raise ValueError("类型不存在")
+            return jsonify({"status":1,"data":result})
+        except ValueError as v:
+            traceback.print_exc()
+            return jsonify({"status":0,"data":v.__str__()})
+        except Exception as e:
+            traceback.print_exc()
+            return jsonify({"status":0,"data":e.__str__()})
+
 
 
 @api.route("/transform",methods=["get"])  # 查询所有的数据转换方法

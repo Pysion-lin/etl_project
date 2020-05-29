@@ -1,6 +1,5 @@
 # from Medical.etl.task.task_log import LogTask
-import traceback,os,time
-from Medical.etl.settings.dev import BASE_DIR
+import traceback
 
 
 # 定义日志处理任务并添加到setting任务列表中

@@ -94,3 +94,24 @@ class EmployeeModel(BaseModel):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
 
+# 数据源类型
+class ResourceType(BaseModel):
+    __tablename__ = "tb_resource_type"
+    id = Column(Integer, primary_key=True)
+    type = Column(String)
+    description = Column(String)
+
+
+# 功能模块的模型类
+class TransformModel(BaseModel):
+    '''功能函数'''
+    __tablename__ = "tb_transform"
+    id = Column(Integer,primary_key=True)
+    name = Column(String)
+    args = Column(String)
+    description = Column(String)
+
+    def to_dict(self):
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+
+

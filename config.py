@@ -8,8 +8,6 @@ class Config(object):
     SQLALCHEMY_DATABASE_URI = "mysql+pymysql://root:12345678@192.168.11.31:3306/pyetl"
     SQLALCHEMY_TRACK_MODIFICATIONS = True
     WTF_CSRF_EXEMPT_LIST = ["*"]
-    from Medical.etl.manage import scheduler
-    SCHEDULER = scheduler
 
 
 class DevelopmentConfig(Config):

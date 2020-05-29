@@ -1,8 +1,7 @@
 
 
 if __name__ == '__main__':
-    import pickle
-    from Medical.etl.extracter.extract import Extract
+    from ETLSchedul import Extract
     # print(type(pickle.dumps(Extract)))
     extract = Extract()
     # print(dir(extract))

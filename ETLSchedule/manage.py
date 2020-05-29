@@ -1,7 +1,5 @@
-from Medical.etl.settings import dev
-import importlib,traceback
-from Medical.etl.workscheduler import ApSchedulerProcess
-
+from ETLSchedule.Schedule.workscheduler import ApSchedulerProcess
+from ETLSchedule.utils import UpdateResource
 
 # 程序入口函数
 # def main():
@@ -28,11 +26,13 @@ from Medical.etl.workscheduler import ApSchedulerProcess
 # def run(scheduler,cls,parameter):
 #     scheduler.add_job(cls,**parameter)
 
-scheduler = ApSchedulerProcess()  # 初始化调度器
-
 
 def main():
-    scheduler.start()
+
+    scheduler = ApSchedulerProcess()  # 初始化调度器
+    scheduler.start()  # 启动任务调度器
+    UpdateResource.update_resource()  # 更新功能模块
+    scheduler.run()  # 启动任务监控器
 
 
 if __name__ == '__main__':

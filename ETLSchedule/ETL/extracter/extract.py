@@ -1,6 +1,4 @@
 import pandas as pd
-import json,requests,traceback
-from Medical.etl.models.models import TBEmployeeModel
 
 
 class Extract(object):
@@ -53,7 +51,7 @@ class Extract(object):
 
     def read_mysql(self,sql):
         '''读取指定SQLserver数据库的数据,sql:查询表的语句 如:select * from TB_BDM_Employee'''
-        from Medical.etl.models import engine_SQL_Server
+        from ETLSchedule.models import engine_SQL_Server
         sql = "select * from TB_BDM_Employee"
         try:
             with engine_SQL_Server.connect() as con, con.begin():

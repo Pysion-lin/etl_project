@@ -1,11 +1,11 @@
-from Medical.etl.extracter.extract import Extract
-from Medical.etl.loader.loader import LoadData
-from Medical.etl.transformer import BaseTransForm
+from ETLSchedul import Extract
+from ETLSchedul import LoadData
+from ETLSchedul import BaseTransForm
 from . import api
 from Medical import db
-from flask import current_app,jsonify,g
+from flask import current_app,jsonify
 from Medical.models import ExtractModel,TransformModel,LoaderModel
-import pickle,inspect
+import inspect
 
 
 def get_func_args(name,obj):

@@ -119,3 +119,13 @@ class TaskModel(db.Model):
 
     def to_dict(self):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+
+
+# 数据源类型
+class ResourceType(db.Model):
+    __tablename__ = "tb_resource_type"
+    id = db.Column(db.Integer, primary_key=True)
+    type = db.Column(db.String)
+    description = db.Column(db.String)
+    def to_dict(self):
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}

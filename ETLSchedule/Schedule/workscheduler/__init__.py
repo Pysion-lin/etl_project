@@ -84,6 +84,15 @@ class ApSchedulerProcess(object):
             msg = f"jobname={job.name}|jobtrigger={job.trigger}|errcode={Event.code}|exception=[{Event.exception}]|traceback=[{Event.traceback}]|scheduled_time={Event.scheduled_run_time}"
             print("任务出错,出错信息:{}".format(msg))
 
+    def run(self):
+        import time
+        while True:
+            jod_store = self.scheduler.get_jobs()
+            print("当前的任务: {}".format(jod_store))
+
+            # TODO 查询数据库中任务表的数据是否有更新,根据更新的数据添加任务到任务队列中
+            time.sleep(2)
+
 
 if __name__ == '__main__':
     def fun(data):

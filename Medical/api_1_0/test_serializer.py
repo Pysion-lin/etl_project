@@ -1,9 +1,8 @@
-from Medical.etl.extracter.extract import Extract
+from ETLSchedul import Extract
 from . import api
-from Medical import db,csrf
-from flask import current_app,jsonify,request
+from Medical import csrf
+from flask import jsonify,request
 from Medical.models import ExtractModel
-import pickle
 
 
 @csrf.exempt

@@ -1,5 +1,4 @@
-from Medical.etl.models.models import HttpLogModel,EmployeeModel
-from Medical.etl.models import session,engine
+from ETLSchedule.models import engine
 
 
 class LoadData(object):

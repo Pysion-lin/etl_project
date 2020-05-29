@@ -1,5 +1,4 @@
-import pandas as pd
-from Medical.etl.extracter.extract import Extract
+#
 
 
 class BaseTransForm(object):
