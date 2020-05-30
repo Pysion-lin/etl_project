@@ -82,10 +82,18 @@ class TransformModel(db.Model):
     __tablename__ = "tb_transform"
     id = db.Column(db.Integer,primary_key=True)
     name = db.Column(db.String)
-    # serializer_no = db.Column(db.Binary)
+    module_id = db.Column(db.Integer)
     args = db.Column(db.String)
     description = db.Column(db.String)
 
+    def to_dict(self):
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+
+
+class TransformModuleModel(db.Model):
+    __tablename__ = "tb_transform_module"
+    id = db.Column(db.Integer,primary_key=True)
+    name = db.Column(db.String)
     def to_dict(self):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
@@ -107,15 +115,9 @@ class TaskModel(db.Model):
     __tablename__ = "tb_task"
     id = db.Column(db.Integer,primary_key=True)
     name = db.Column(db.String)
-    loader = db.Column(db.String)
-    transform = db.Column(db.String)
-    extract = db.Column(db.String)
-    scheduler = db.Column(db.String)
-    loader_parameter = db.Column(db.String)
-    transform_parameter = db.Column(db.String)
-    extract_parameter = db.Column(db.String)
-    status = db.Column(db.Integer)
-    task_id = db.Column(db.String)
+    source = db.Column(db.String)
+    methods = db.Column(db.String)
+    target = db.Column(db.String)
 
     def to_dict(self):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}

@@ -41,8 +41,8 @@ class BaseTransForm(object):
         dataframe[column] = dataframe[column].map(lambda x: to_data if x == from_data else x)
         return dataframe
 
-    def split_data(self,dataframe):
-        '''切分数据'''
+    def split_data(self,dataframe,column,sep):
+        '''切分数据 column:字段名,sep:分割符'''
         # data_list = []
         # method_data = dataframe[0].map(self.process2__)
         print("split data finish")

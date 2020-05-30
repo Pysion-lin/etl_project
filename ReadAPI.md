@@ -202,3 +202,96 @@
 与六接口一样:http://127.0.0.1:5000/api/v1_0/task
 判断响应数据中的data中的status,如果等于1,表示启动,0表示未启动,-1表示失败
 ````
+
+## 八.数据源和目标源查询接口
+````
+请求路径:
+    http://127.0.0.1:5000/api/v1_0/resource
+请求方法:
+    get
+请求参数:
+    无
+响应数据:
+{
+  "data": [
+    {
+      "description": {
+        "database": "pyetl",
+        "ip": "192.168.1.100",
+        "password": "12345678",
+        "port": 3306,
+        "user": "root"
+      },
+      "id": 1,
+      "type": "SQLserver"
+    },
+    {
+      "description": {
+        "database": "CRM",
+        "ip": "192.168.1.100\\sql2008/",
+        "password": "test",
+        "user": "test"
+      },
+      "id": 2,
+      "type": "MySQL"
+    },
+    {
+      "description": {
+        "header": 0,
+        "path": "/root/xxx.csv",
+        "sep": ","
+      },
+      "id": 3,
+      "type": "Excel"
+    }
+  ],
+  "status": 1
+}
+````
+## 九.数据源和目标源查询接口
+````
+请求路径:
+     http://127.0.0.1:5000/api/v1_0/resource
+请求方式:
+    post
+请求参数:
+{
+	"description": 
+		{
+			"database": "CRM",
+			"ip": "192.168.1.100\\sql2008",
+			"password": "test",
+			"user": "test"
+		},
+	"id": 2,
+	"type": "SQLserver",
+	"sql":"select * from tb_bdm_employee limit 1",
+	"table":"TB_BDM_Employee"
+}
+响应数据:
+{
+  "data": [
+    "EmployeeID",
+    "EmployeeCode",
+    "EmployeeName",
+    "BirthDate",
+    "HireDate",
+    "StateID",
+    "AlphabetCode",
+    "Sex",
+    "PositionID",
+    "Address",
+    "Tel",
+    "EMail",
+    "Notes",
+    "PostalCode",
+    "DeptCode",
+    "Version",
+    "IsChecker",
+    "IsDownLoad",
+    "HospitalCode"
+  ],
+  "status": 1
+}
+根据查询接口填写对应的数据
+````
