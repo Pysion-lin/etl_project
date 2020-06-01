@@ -2,15 +2,12 @@
 
 
 class BaseTransForm(object):
-    map_path = {
-        "file":"path",
-        "api":"url",
-        "database":"url+database"
-    }
 
     def __init__(self):
-        # super().__init__()
-        print("baseTransform __init__")
+        self.selector_dict = {"module_id":1,"primary_key":False}
+        self.mapping_dict = {"module_id":1,"primary_key":False}
+        self.split_data_dict = {"module_id":2,"primary_key":False}
+        self.select_primary_key_dict = {"module_id":3,"primary_key":True}
         pass
 
     # def process_nall(self,dataframe):
@@ -48,12 +45,21 @@ class BaseTransForm(object):
         print("split data finish")
         return dataframe
 
+    def select_primary_key(self):
+        '''选择字段作为装载数据时的判断是否重复的依据(每个任务必填),此处仅提供可视化选择对应的参数列表,实际处理在loader模块'''
+        pass
+
+    def xx(self):
+        pass
+
     # def model(self,data):
     #     return AttrDict(data)
-
     def methods__(self):
         return (list(filter(lambda m: not m.startswith("__") and not m.endswith("__") and callable(getattr(self, m)),
                             dir(self))))
+
+        # return (list(filter(lambda m: not m.startswith("__") and not m.endswith("__") and getattr(self, m),
+        #                     dir(self))))
 
 
 class AttrDict(dict):

@@ -1,6 +1,6 @@
 from sqlalchemy import Column
 from sqlalchemy.orm import validates
-from sqlalchemy.types import String, Integer,Date,Binary,TIMESTAMP
+from sqlalchemy.types import String, Integer,Date,Binary,TIMESTAMP,Boolean
 from sqlalchemy.ext.declarative import declarative_base
 
 
@@ -109,7 +109,9 @@ class TransformModel(BaseModel):
     id = Column(Integer,primary_key=True)
     name = Column(String)
     args = Column(String)
+    is_primary_key = Column(Boolean)
     description = Column(String)
+    module_id = Column(Integer)
 
     def to_dict(self):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}

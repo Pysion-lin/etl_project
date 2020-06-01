@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine,MetaData,Table
 from sqlalchemy.orm import sessionmaker
 from ETLSchedule.settings.dev import DATABASE_URL,DATABASE_URL_INPUT
 # 导入相应的模块

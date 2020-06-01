@@ -1,6 +1,19 @@
 import pandas as pd
 
 
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from ETLSchedule.settings.dev import DATABASE_URL,DATABASE_URL_INPUT
+# 导入相应的模块
+# engine = create_engine(DATABASE_URL, max_overflow=5)  # 创建项目数据库连接，max_overflow指定最大连接数
+# DBSession = sessionmaker(engine)  # 创建项目数据库DBSession类型
+# session = DBSession()  # 创建项目数据库session对象
+#
+# engine_SQL_Server = create_engine(DATABASE_URL_INPUT,deprecate_large_types=True)
+# SQLServerDBSession = sessionmaker(bind=engine_SQL_Server)  # 创建项目数据库DBSession类型
+# SQLServer_session = SQLServerDBSession()  # 创建项目数据库session对象
+
+
 class Extract(object):
     '''数据抽取基类'''
     def __init__(self):
@@ -48,18 +61,52 @@ class Extract(object):
     #         raise ValueError("通过url获取的的数据不是json格式")
     #     df = pd.read_json(json_data)
     #     return df
+    def create_mysql_engin__(self,connect):
+        url = "mysql+pymysql://{user}:{password}@{ip}:{port}/{database}?charset=utf8".format(user=connect['user'],password=connect['password'],
+                                                                                ip=connect['ip'],port=connect['port'],database=connect['database'])
+        engine = create_engine(url, max_overflow=5)  # 创建项目数据库连接，max_overflow指定最大连接数
+        return engine
 
-    def read_mysql(self,sql):
+    def create_mysql_session__(self,connect):
+        engine = self.create_mysql_engin__(connect)
+        DBSession = sessionmaker(engine)  # 创建项目数据库DBSession类型
+        session = DBSession()  # 创建项目数据库session对象
+        return session
+
+    def read_mysql(self,sql,connect):
         '''读取指定SQLserver数据库的数据,sql:查询表的语句 如:select * from TB_BDM_Employee'''
-        from ETLSchedule.models import engine_SQL_Server
-        sql = "select * from TB_BDM_Employee"
+        engine = self.create_mysql_engin__(connect)
         try:
-            with engine_SQL_Server.connect() as con, con.begin():
+            with engine.connect() as con, con.begin():
                 df = pd.read_sql(sql, con)  # 获取数据
                 con.close()
         except Exception as e:
             df = None
         print("read_mysql:",df)
+        return df
+
+    def create_sqlserver_engin__(self, connect):
+        url = r"mssql+pymssql://{user}:{password}@{ip}/{database}".format(user=connect['user'],password=connect['password'],
+                                                                          ip=connect['ip'],database=connect['database'])
+        engine = create_engine(url, deprecate_large_types=True)  # 创建项目数据库连接，max_overflow指定最大连接数
+        return engine
+
+    def create_sqlserver_session__(self, connect):
+        engine = self.create_sqlserver_engin__(connect)
+        DBSession = sessionmaker(engine)  # 创建项目数据库DBSession类型
+        session = DBSession()  # 创建项目数据库session对象
+        return session
+
+    def read_sqlserver(self, sql,connect):
+        '''读取指定SQLserver数据库的数据,sql:查询表的语句 如:select * from TB_BDM_Employee'''
+        engine = self.create_sqlserver_engin__(connect)
+        try:
+            with engine.connect() as con, con.begin():
+                df = pd.read_sql(sql, con)  # 获取数据
+                con.close()
+        except Exception as e:
+            df = None
+        # print("read_sqlserver:", df)
         return df
         # try:
         #     result = engine_SQL_Server.query(TBEmployeeModel).all()

@@ -20,7 +20,7 @@ class User(db.Model):
     Notes = db.Column(db.String, index=True)
     PostalCode = db.Column(db.String, index=True)
     DeptCode = db.Column(db.String, index=True)
-    Version = db.Column(db.String, index=True)
+    Version = db.Column(db.TIMESTAMP, index=True)
     IsChecker = db.Column(db.String, index=True)
     IsDownLoad = db.Column(db.String, index=True)
     HospitalCode = db.Column(db.String, index=True)
@@ -84,7 +84,9 @@ class TransformModel(db.Model):
     name = db.Column(db.String)
     module_id = db.Column(db.Integer)
     args = db.Column(db.String)
+    is_primary_key = db.Column(db.Boolean)
     description = db.Column(db.String)
+    primary_key = db.Column(db.String)
 
     def to_dict(self):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}

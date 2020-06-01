@@ -81,6 +81,8 @@ def field():
                     connect.mysql_connect_test(dict_data.get("connect"))  # 测试是否连通
                     parse_sql = parse_parameter.get_str_btw(sql,"select","from")
                     print("parse_sql",parse_sql,type(parse_sql))
+                    if not parse_sql:
+                        raise ValueError("输入的SQL语句不符合规范")
                     if "*" in parse_sql:
                         table = connect.get_table(sql)
                         ret = connect.get_mysql_field_from_engin(table)
@@ -90,6 +92,8 @@ def field():
                     connect.sqlserver_connect_test(dict_data.get("connect"))
                     parse_sql = parse_parameter.get_str_btw1(sql, "select", "from")
                     print(type(parse_sql),parse_sql)
+                    if not parse_sql:
+                        raise ValueError("输入的SQL语句不符合规范")
                     if "*" in parse_sql:
                         table = connect.get_table(sql)
                         result = connect.sqlserver_get_sql_field("select top 1 * from {}".format(table))
@@ -177,13 +181,14 @@ def task():
             dict_data = request.get_json()
             print(dict_data)
             # 校验参数
-            if not dict_data.get("source").get("type") or not dict_data.get("target").get("type") or \
-                    not dict_data.get("source").get("table") or not dict_data.get("source").get("sql") or \
-                    not dict_data.get("target").get("table") or not dict_data.get("target").get("sql") or not dict_data.get("name"):
+            if not dict_data.get("source").get("type") or not dict_data.get("target").get("type") or not \
+                    dict_data.get("source").get("sql") or not dict_data.get("name") or not dict_data.get("target").get("table"):
                 raise ValueError("参数不完整")
             judge_empty.Judge_Empty(2, dict_data.get("source").get("connect"))
             judge_empty.Judge_Empty(2, dict_data.get("target").get("connect"))
             for methods in dict_data.get("methods"):
+                if not methods.get("name"):
+                    raise ValueError("methods的name参数不能为空")
                 judge_empty.Judge_Empty(2, methods.get("args"))
 
             instance = TaskModel.query.filter_by(name=dict_data.get("name")).first()
