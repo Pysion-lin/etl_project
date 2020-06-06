@@ -1,5 +1,5 @@
 from ETLSchedule.Schedule.workscheduler import ApSchedulerProcess
-from ETLSchedule.utils import UpdateResource
+from ETLSchedule.utils import UpdateResource,UpdateTaskScheduleStatus
 from ETLSchedule.task import task_queue
 
 # 程序入口函数
@@ -33,6 +33,7 @@ def main():
     scheduler = ApSchedulerProcess()  # 初始化调度器
     scheduler.start()  # 启动任务调度器
     UpdateResource.update_resource()  # 更新功能模块
+    UpdateTaskScheduleStatus.update_task_schedule_status()  # 初始化任务计划的状态
     task_queue.run(scheduler)  # 启动任务监控器
 
 
