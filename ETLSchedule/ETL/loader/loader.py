@@ -64,7 +64,7 @@ class LoadData(object):
         result = cursor.fetchall()
         return result
 
-    def update_mysql_data(self, engine, table_name, data_dict):
+    def update_mysql_data(self, engine,schema, table_name, data_dict,where):
         # sql_comment = 'UPDATE %s SET ' % table_name + ','.join(['%s=%r' % (k, data_dict[k]) for k in data_dict]) + ' WHERE %s=%r;' % (where[0], where[1])
         # cursor = session.execute(sql_comment)
         # session.commit()
@@ -75,27 +75,19 @@ class LoadData(object):
 
         # 绑定引擎
         metadata = MetaData(engine)
-
         # 连接数据表
         tb_bdm_employee = Table(table_name, metadata, autoload=True)
         # address_table = Table('address', metadata, autoload=True)
-
         # 连接引擎
         conn = engine.connect()
-
-        ins = tb_bdm_employee.update()
-
+        ins = tb_bdm_employee.update().where(schema.Column(where[0]) == where[1]).values(**data_dict)   # table.update().where(table.c.id==7).values(name='foo')
         # 传递参数并执行语句
-        result = conn.execute(ins, **data_dict)
-
-        # # 执行多条语句
-        # result = conn.execute(tb_bdm_employee.insert(), [data_dict])
-
+        result = conn.execute(ins)
         return result
 
         # return result
 
-    def sql_to_mysql(self, df, target, primary_key, extract):
+    def sql_to_mysql(self, df, target, primary_key, extract,schema):
         # extract = Extract()
         session = extract.create_mysql_session__(target["connect"])
         engine = extract.create_mysql_engin__(target["connect"])
@@ -120,11 +112,10 @@ class LoadData(object):
                     if not ret:  # 如果结果不存在,将数据插入
                         self.insert_mysql_data(engine, target.get("table"), data_dict)
                     else:  # 如果结果存在,将数据更新
-                        print('data_dict',data_dict)
-                        where = (name,row[name])
+                        where = (name,data_dict[name])
                         # 剔除主键的字段,不然会报错
                         del data_dict[name]
-                        self.update_mysql_data(engine,target.get("table"),data_dict)
+                        self.update_mysql_data(engine,schema,target.get("table"),data_dict,where)
                 else:
                     raise ValueError("主键:{} 不存在SQL语句中".format(name))
 

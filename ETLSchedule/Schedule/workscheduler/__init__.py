@@ -3,6 +3,7 @@ from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.executors.pool import ThreadPoolExecutor,ProcessPoolExecutor
 import datetime, traceback, threading, os, sys, gc
 from apscheduler.events import EVENT_JOB_ERROR, EVENT_JOB_EXECUTED
+import logging
 
 
 class ApSchedulerProcess(object):
@@ -16,6 +17,9 @@ class ApSchedulerProcess(object):
         # self.scheduler = BlockingScheduler(executors=self.executors)
         # 创建监听，任务出错和任务正常结束都会执行job_listener函数
         self.scheduler.add_listener(self.job_listener, EVENT_JOB_ERROR | EVENT_JOB_EXECUTED)
+        logging.basicConfig(level=logging.INFO, format = '%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s'
+                            ,datefmt='%Y-%m-%d %H:%M:%S',filename='scheduler_log.txt',filemode='a')
+        self.scheduler._logger = logging
 
     def add_job(self,job,trigger="interval",seconds=None, data=None, job_id="interval_task"):
         '''
@@ -39,6 +43,7 @@ class ApSchedulerProcess(object):
                 date = (datetime.datetime.now() + datetime.timedelta(seconds=seconds)) .strftime("%Y-%m-%dT%H:%M:%S")
                 self.scheduler.add_job(job, trigger='date', run_date=date, id=self.id, args=self.data)
         else:
+            self.scheduler.logger.error("调度器创建失败")
             raise ValueError("调度器创建失败")
 
     def start(self):
@@ -84,6 +89,7 @@ class ApSchedulerProcess(object):
             #                      second=next_datetime.second)
             msg = f"jobname={job.name}|jobtrigger={job.trigger}|errcode={Event.code}|exception=[{Event.exception}]|traceback=[{Event.traceback}]|scheduled_time={Event.scheduled_run_time}"
             print("任务出错,出错信息:{}".format(msg))
+            self.scheduler.logger.error(msg)
 
     def run(self):
         import time

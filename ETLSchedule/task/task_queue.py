@@ -90,6 +90,14 @@ def parse_task_parameter(task):
 
 # 组装任务(该方法处理mapping功能)
 def get_task(data_dict,task_id):
+    from sqlalchemy.sql import schema
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from ETLSchedule.settings.dev import DATABASE_URL
+    engine = create_engine(DATABASE_URL, max_overflow=5)  # 创建项目数据库连接，max_overflow指定最大连接数
+    DBSession = sessionmaker(engine)  # 创建项目数据库DBSession类型
+    session = DBSession()  # 创建项目数据库session对象
+
     try:
         # data_dict = parse_task_parameter(task)
         source = eval(data_dict["source"])
@@ -101,28 +109,28 @@ def get_task(data_dict,task_id):
         df = data_frame
         # 检查target是否存在
         mapping_columns = []
+        target_columns = []
+        source_columns = []
         for method in methods:
             for k, v in method.items():
                 func = getattr(transform, k)
-                # print('func:',func,'v:',v)
                 df = func(df, **v)
                 if {v["column"]:v["to_column"]} not in mapping_columns:
+                    target_columns.append(v["to_column"])
+                    source_columns.append(v["column"])
                     mapping_columns.append({v["column"]:v["to_column"]})
-
-        df = change_source_hearder_target(df,mapping_columns)
-        loader.sql_to_mysql(df, target, primary_key, extract)
-        # change_task_scheduler_status(session, task_id, "任务正常运行中...", 2)
+        df = change_source_hearder_target(df,mapping_columns,source_columns,target_columns)
+        loader.sql_to_mysql(df, target, primary_key, extract,schema)
+        change_task_scheduler_status(session, task_id, "任务正常运行中...", 2)
     except Exception as e:
         traceback.print_exc()
         print("任务运行失败:{}".format(e.__str__()))
-        # change_task_scheduler_status(session,task_id,e.__str__(),-1)
-    except InternalError as i:
-        traceback.print_exc()
-        print(i.__str__())
+        change_task_scheduler_status(session,task_id,e.__str__(),-1)
 
 
 # 任务执行失败时,将对应任务状态修改为出错
 def change_task_scheduler_status(session,task_id,e,status):
+    from ETLSchedule.models.models import TaskScheduleModel
     try:
         print(session,task_id,e,status)
         scheduler = session.query(TaskScheduleModel).filter_by(TaskID=task_id).first()
@@ -135,16 +143,14 @@ def change_task_scheduler_status(session,task_id,e,status):
 
 
 # 修改所有源列名的映射关系并修改改为目标的列名
-def change_source_hearder_target(source_df,mapping_columns):
-    # source_df.columns.values.tolist()
-    all_target_columns = []
-    for mapping_column in mapping_columns:
-        for source_column,target_column in mapping_column.items():
-            if target_column not in all_target_columns:
-                all_target_columns.append(target_column)
-            source_df.rename(columns={source_column: target_column}, inplace=True)
-    result_df = source_df[all_target_columns]
-    return result_df
+def change_source_hearder_target(source_df,mapping_columns,source_columns,target_columns):
+    # all_source_column = source_df.columns.values.tolist()
+    source_df = source_df[source_columns]
+    df_copy = source_df.copy()
+    for mapping in mapping_columns:
+        df_copy.rename(columns=mapping,inplace=True,copy=False)
+    df_copy = df_copy[target_columns]
+    return df_copy
 
 
 # 获取所有正在运行的任务id
