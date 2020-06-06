@@ -1,5 +1,6 @@
 from ETLSchedule.Schedule.workscheduler import ApSchedulerProcess
 from ETLSchedule.utils import UpdateResource
+from ETLSchedule.task import task_queue
 
 # 程序入口函数
 # def main():
@@ -32,7 +33,7 @@ def main():
     scheduler = ApSchedulerProcess()  # 初始化调度器
     scheduler.start()  # 启动任务调度器
     UpdateResource.update_resource()  # 更新功能模块
-    scheduler.run()  # 启动任务监控器
+    task_queue.run(scheduler)  # 启动任务监控器
 
 
 if __name__ == '__main__':

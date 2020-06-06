@@ -20,8 +20,8 @@ def update_resource():
                         session.add(function_model)
                     else:
                         session.query(TransformModel).filter_by(name=name).update({"args": str(args),"module_id":value["module_id"],"is_primary_key":value["primary_key"],"description": tmp_func.__doc__})
-                else:
-                    print("请配置transform的init属性值,name:{},property_name:{}".format(name,property_name))
+                # else:
+                #     print("请配置transform的init属性值,name:{},property_name:{}".format(name,property_name))
                     # Exception("请配置transform的init属性值")
         try:
             session.commit()

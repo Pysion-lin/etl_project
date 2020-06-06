@@ -72,9 +72,10 @@ class ApSchedulerProcess(object):
             # 恢复原先的任务定时时间
             # self.scheduler.reschedule_job(Event.job_id, trigger='cron', hour='00', minute='10', second='00')
             # print('*' * 20, '成功', '*' * 20)
-            for job in self.scheduler.get_jobs():
-                print(job.name)
-                print(job.trigger)
+            # for job in self.scheduler.get_jobs():
+            #     print(job.name)
+            #     print(job.trigger)
+            print("任务没有出错,正在运行...")
         else:
             # 计算当前时间5秒后的时间
             # next_datetime = datetime.datetime.now() + datetime.timedelta(seconds=5)
@@ -88,6 +89,7 @@ class ApSchedulerProcess(object):
         import time
         while True:
             jod_store = self.scheduler.get_jobs()
+
             print("当前的任务: {}".format(jod_store))
 
             # TODO 查询数据库中任务表的数据是否有更新,根据更新的数据添加任务到任务队列中

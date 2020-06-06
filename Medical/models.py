@@ -86,7 +86,6 @@ class TransformModel(db.Model):
     args = db.Column(db.String)
     is_primary_key = db.Column(db.Boolean)
     description = db.Column(db.String)
-    primary_key = db.Column(db.String)
 
     def to_dict(self):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
@@ -120,6 +119,21 @@ class TaskModel(db.Model):
     source = db.Column(db.String)
     methods = db.Column(db.String)
     target = db.Column(db.String)
+    primary_key = db.Column(db.String)
+
+    def to_dict(self):
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+
+
+class TaskScheduleModel(db.Model):
+    __tablename__ = "tb_task_schedule"
+    id = db.Column(db.Integer, primary_key=True)
+    task_name = db.Column(db.String)
+    task_id = db.Column(db.Integer)
+    TaskID = db.Column(db.String)
+    schedule = db.Column(db.String)
+    status = db.Column(db.Integer)
+    logs = db.Column(db.String)
 
     def to_dict(self):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}

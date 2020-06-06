@@ -27,27 +27,29 @@ class BaseTransForm(object):
     #     data = [split_data[0], str(split_data[5]).replace('"',""), split_data[6], split_data[8]]
     #     return data
 
-    def selector(self,dataframe,column):
-        '''选择dataframe中的某一列,column是列名'''
+    def selector(self,dataframe,column,to_column):
+        '''选择dataframe中的某一列,column是列名,to_column:目标列'''
         serial = dataframe[column]
         return serial
 
-    def mapping(self,dataframe,column,from_data,to_data):
-        '''将某一列的值进行映射,column:列名,from_data:源数据,to_data:目标数据'''
-        dataframe["Version"] = dataframe['Version'].map(lambda x: None if type(x) == bytes else x)
+    def mapping(self,dataframe,column,from_data,to_data,to_column):
+        '''将某一列的值进行映射,column:列名,from_data:源数据,to_data:目标数据,to_column:目标列'''
+        # dataframe["Version"] = dataframe['Version'].map(lambda x: None if type(x) == bytes else x)
         dataframe[column] = dataframe[column].map(lambda x: to_data if x == from_data else x)
+        # dataframe.rename(columns={column:to_column}, inplace=True)  # 将映射的源列名更改为目标的列名,在写入目标的时候直接操作该df
         return dataframe
 
-    def split_data(self,dataframe,column,sep):
-        '''切分数据 column:字段名,sep:分割符'''
+    def split_data(self,dataframe,column,sep,to_column):
+        '''切分数据 column:字段名,sep:分割符,to_column:目标列'''
         # data_list = []
         # method_data = dataframe[0].map(self.process2__)
         print("split data finish")
         return dataframe
 
-    def select_primary_key(self):
-        '''选择字段作为装载数据时的判断是否重复的依据(每个任务必填),此处仅提供可视化选择对应的参数列表,实际处理在loader模块'''
-        pass
+    def select_primary_key(self,dataframe,column,to_column):
+        '''选择字段作为装载数据时的判断是否重复的依据(每个任务必填),
+        此处仅提供可视化选择对应的参数列表,实际处理在loader模块,column:源列名,to_column:目标列'''
+        return dataframe
 
     def xx(self):
         pass

@@ -26,10 +26,24 @@ class TaskModel(BaseModel):
     __tablename__ = "tb_task"
     id = Column(Integer,primary_key=True)
     name = Column(String)
-    loader = Column(String)
-    transform = Column(String)
-    extract = Column(String)
-    scheduler = Column(String)
+    source = Column(String)
+    methods = Column(String)
+    target = Column(String)
+    primary_key = Column(String)
+
+    def to_dict(self):
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+
+
+class TaskScheduleModel(BaseModel):
+    __tablename__ = "tb_task_schedule"
+    id = Column(Integer, primary_key=True)
+    task_id = Column(Integer)
+    TaskID = Column(String)
+    task_name = Column(String)
+    schedule = Column(String)
+    status = Column(Integer)
+    logs = Column(String)
 
 
 class TBEmployeeModel(BaseModel):

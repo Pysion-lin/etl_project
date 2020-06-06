@@ -1,11 +1,12 @@
 from . import api
 from flask import current_app, jsonify, request
 from Medical import csrf, db
-from Medical.models import ExtractModel, TransformModel, LoaderModel, TaskModel, ResourceType,TransformModuleModel
+from Medical.models import ExtractModel, TransformModel, LoaderModel, TaskModel, ResourceType,TransformModuleModel,TaskScheduleModel
 import traceback, random, datetime
 from Medical.api_1_0.utils.connect import TestConnect
 from Medical.api_1_0.utils import judge_empty
 from Medical.api_1_0.utils import parse_parameter
+
 
 
 @csrf.exempt
@@ -27,23 +28,23 @@ def resource():
         try:
             dict_data = request.get_json()  # {"description": {"database": "pyetl","ip": "192.168.1.100","password": "12345678","port": 3306,
             # "user": "root"},"id": 1,"type": "SQLserver","sql":"","table":""}
-
+            print("dict_data",dict_data)
             type_id = dict_data.get("id")
             if not type_id:
                 raise ValueError("类型id不存在")
             # 校验参数
-            if not all([dict_data.get("description"), dict_data["id"], dict_data.get("type"), dict_data.get("sql"),
-                        dict_data.get("table"), dict_data["description"].get("database"),
-                        dict_data["description"].get("ip"), dict_data["description"].get("password"),
-                        dict_data["description"].get("user")]):
+            if not all([dict_data.get("connect"), dict_data["id"], dict_data["connect"].get("database"),
+                        dict_data["connect"].get("ip"), dict_data["connect"].get("password"),
+                        dict_data["connect"].get("user")]):
                 raise ValueError("参数不完整")
             connect = TestConnect()
-            if int(type_id) == 1:
-                if not all([dict_data["description"].get("port")]):
+            if int(type_id) == 2:
+                if not all([dict_data["connect"].get("port")]):
                     raise ValueError("参数不完整,缺少port参数")
-                connect.mysql_connect_test(dict_data.get("description"))
-            elif int(type_id) == 2:
-                connect.sqlserver_connect_test(dict_data.get("description"))
+                print('dict_data.get("connect")',dict_data.get("connect"))
+                connect.mysql_connect_test(dict_data.get("connect"))
+            elif int(type_id) == 1:
+                connect.sqlserver_connect_test(dict_data.get("connect"))
             else:
                 raise ValueError("类型不存在")
             return jsonify({"status": 1, "data": "数据库连接成功"})
@@ -60,6 +61,13 @@ def resource():
 def field():
     try:
         dict_data = request.json
+        if not dict_data:
+            dict_data = request.args
+        if not dict_data:
+            dict_data = request.data
+        if not dict_data:
+            raise ValueError("参数不能为空")
+        print('data_dict',dict_data)
         type_id = dict_data.get("id")  # mysql/SQLserver
         type_name = dict_data.get("type")  # source/target
         if not type_id:
@@ -70,14 +78,14 @@ def field():
         judge_empty.Judge_Empty(2, dict_data.get("connect"))
         connect = TestConnect()
 
-        if request.method == "GET":  # 获取字段
+        if request.method == "POST":  # 获取字段
             ret = None
             if type_name == "source":  # 类型为源的字段
                 sql = dict_data.get("sql")
                 if not sql:
                     raise ValueError("sql不存在")
                 sql = sql + " "
-                if int(type_id) == 1:  # 获取连接为mysql的字段
+                if int(type_id) == 2:  # 获取连接为mysql的字段
                     connect.mysql_connect_test(dict_data.get("connect"))  # 测试是否连通
                     parse_sql = parse_parameter.get_str_btw(sql,"select","from")
                     print("parse_sql",parse_sql,type(parse_sql))
@@ -88,7 +96,7 @@ def field():
                         ret = connect.get_mysql_field_from_engin(table)
                     else:
                         ret = parse_sql
-                elif int(type_id) == 2: # 获取连接为SQLserver的字段
+                elif int(type_id) == 1: # 获取连接为SQLserver的字段
                     connect.sqlserver_connect_test(dict_data.get("connect"))
                     parse_sql = parse_parameter.get_str_btw1(sql, "select", "from")
                     print(type(parse_sql),parse_sql)
@@ -108,12 +116,14 @@ def field():
                 table = dict_data.get("table")
                 if not table:
                     raise ValueError("table不存在")
-                if int(type_id) == 1:  # 获取连接为mysql的字段
+                if int(type_id) == 2:  # 获取连接为mysql的字段
                     connect.mysql_connect_test(dict_data.get("connect"))  # 测试是否连通
                     ret = connect.get_mysql_field_from_engin(table)
-                elif int(type_id) == 2: # 获取连接为SQLserver的字段
+                elif int(type_id) == 1: # 获取连接为SQLserver的字段
                     connect.sqlserver_connect_test(dict_data.get("connect"))
                     ret = connect.sqlserver_get_table_field(table)
+                    if not ret:
+                        raise ValueError("该表格不存在")
             return jsonify({"status": 1, "data": ret})
     except ValueError as v:
         traceback.print_exc()
@@ -144,8 +154,12 @@ def transform():
     try:
         data_dict = request.json
         if not data_dict:
+            data_dict = request.args
+        if not data_dict:
+            data_dict = request.data
+        if not data_dict:
             raise ValueError("参数不能为空")
-        module_id = data_dict.get("module_id")
+        module_id = int(data_dict.get("module_id"))
         if not module_id:
             raise ValueError("module_id参数不能为空")
         transforms = TransformModel.query.filter_by(module_id=module_id).all()
@@ -182,24 +196,24 @@ def task():
             print(dict_data)
             # 校验参数
             if not dict_data.get("source").get("type") or not dict_data.get("target").get("type") or not \
-                    dict_data.get("source").get("sql") or not dict_data.get("name") or not dict_data.get("target").get("table"):
+                    dict_data.get("source").get("sql") or not dict_data.get("name") or not dict_data.get("target").get("table") \
+                    or not dict_data.get("primary_key"):
                 raise ValueError("参数不完整")
             judge_empty.Judge_Empty(2, dict_data.get("source").get("connect"))
             judge_empty.Judge_Empty(2, dict_data.get("target").get("connect"))
+            judge_empty.Judge_Empty(2, dict_data.get("primary_key"))
             for methods in dict_data.get("methods"):
-                if not methods.get("name"):
-                    raise ValueError("methods的name参数不能为空")
-                judge_empty.Judge_Empty(2, methods.get("args"))
+                judge_empty.Judge_Empty(2, methods)
 
             instance = TaskModel.query.filter_by(name=dict_data.get("name")).first()
             if not instance:
                 task = TaskModel(name=str(dict_data.get("name")), source=str(dict_data["source"]), methods=str(dict_data["methods"]),
-                                 target=str(dict_data["target"]))
+                                 target=str(dict_data["target"]),primary_key=str(dict_data["primary_key"]))
                 db.session.add(task)
             else:
                 TaskModel.query.filter_by(name=str(dict_data.get("name"))).update({"source": str(dict_data["source"]),
                                                                               "methods": str(dict_data["methods"]),
-                                                                              "target": str(dict_data["target"])})
+                                                                              "target": str(dict_data["target"]),"primary_key":str(dict_data["primary_key"])})
             db.session.commit()
             return jsonify({"status": 1, "data": "任务创建成功"})
         except ValueError as v:
@@ -223,58 +237,76 @@ def task():
 
 
 @csrf.exempt
-@api.route("/task/scheduler", methods=["POST", "GET"])  # 任务提交接口
+@api.route("/task/scheduler", methods=["POST", "PUT", "GET"])  # 任务计划提交接口
 def task_scheduler():
-    try:
-        if request.method == "POST":
+    if request.method == "POST":  # 创建任务计划
+        try:
             dict_data = request.json
-            if not dict_data.get("id"):
-                raise ValueError("参数不完整,缺少id")
-            id = int(dict_data.get("id"))
+            if not dict_data.get("task_id") or not dict_data.get("schedule"):
+                raise ValueError("参数不完整,缺少task_id 或者 schedule")
+            task_id = int(dict_data.get("task_id"))
+            internal = int(dict_data["schedule"])
             # 提取任务处理模块
-            ## 提取extract模块
-            base_task = BaseTask()
-            task = TaskModel.query.filter_by(id=id).first()
-            extract_name = task.extract
-            transform_name = task.transform
-            loader_name = task.loader
-            extracter_func = getattr(base_task, extract_name)
-            ## 提取transform模块
-            transform_func = getattr(base_task, transform_name)
-            ## 提取loader模块
-            loader_func = getattr(base_task, loader_name)
-
-            # 组装一个任务
-            def new_task(_extracter_func, _transform_func, _loader_func, extract_parameter, transform_parameter):
-                print("任务开始")
-                1 / 0
-                # dataframe = _extracter_func(**dict(eval(extract_parameter)))
-                # transform_parameter = dict(eval(transform_parameter))
-                # transform_parameter["dataframe"] = dataframe
-                # _dataframe = _transform_func(**transform_parameter)
-                # result = _loader_func(_dataframe)
-
-            # 添加一个任务
-
+            base_task = TaskModel()
+            task = base_task.query.filter_by(id=task_id).first()
+            if task is None:
+                raise ValueError("该任务不存在")
             # 生成随机的任务id
             random_id = datetime.datetime.strftime(datetime.datetime.now(), "%Y%m%d%H%M%S") + "%00d" % (
                 random.randint(000, 999))
-            try:
-                scheduler = current_app.config.get("SCHEDULER")
-                scheduler.add_job(new_task, trigger="interval", seconds=int(task.scheduler),
-                                  data=[extracter_func, transform_func, loader_func, task.extract_parameter,
-                                        task.transform_parameter], job_id=random_id)
-            except Exception as e:
-                raise ValueError("任务启动失败,请查询错误日志: {}".format(e.__str__()))
-            task.status = 1
-            task.task_id = random_id
+            task_schedule = TaskScheduleModel()
+            schedule = task_schedule.query.filter_by(TaskID=random_id).first()
+            if schedule:
+                raise ValueError("随机TaskID已存在,请重新提交")
+            new_task_scheduler = TaskScheduleModel(task_name=task.name,task_id=task_id,TaskID=random_id,schedule=internal,status=0)
+            db.session.add(new_task_scheduler)
             db.session.commit()
-            return jsonify({"status": 1, "data": "任务启动成功"})
-    except ValueError as v:
-        traceback.print_exc()
-        task.status = 0
-        db.session.commit()
-        return jsonify({"status": 0, "data": v.__str__()})
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({"status": 0, "data": e.__str__()})
+            return jsonify({"status": 1, "data": "任务计划创建成功"})
+        except ValueError as v:
+            traceback.print_exc()
+            db.session.rollback()
+            return jsonify({"status": 0, "data": v.__str__()})
+        except Exception as e:
+            traceback.print_exc()
+            db.session.rollback()
+            return jsonify({"status": 0, "data": e.__str__()})
+    if request.method == "PUT":  # 启动任务计划
+        try:
+            # data_dict = request.get_json()
+            data_dict = request.form
+            if not data_dict:
+                raise ValueError("参数不能为空")
+            if not data_dict.get("task_id"):
+                raise ValueError("缺少id或status参数")
+            task_id = int(data_dict["task_id"])
+            status = int(data_dict["status"])
+            # status = int(data_dict["status"])
+            task_schedule = TaskScheduleModel()
+            schedule = task_schedule.query.filter_by(TaskID=task_id).first()
+            if not schedule:
+                raise ValueError("该任务不存在")
+            schedule.status = status
+            db.session.commit()
+            return jsonify({"status": 1, "data": "任务操作成功,请查看任务执行日志"})
+        except ValueError as v:
+            traceback.print_exc()
+            db.session.rollback()
+            return jsonify({"status": 0, "data": v.__str__()})
+        except Exception as e:
+            traceback.print_exc()
+            db.session.rollback()
+            return jsonify({"status": 0, "data": e.__str__()})
+    if request.method == "GET":  # 查询任务计划
+        try:
+            task_schedule = TaskScheduleModel()
+            schedules = task_schedule.query.all()
+            data_app = []
+            for schedule in schedules:
+                data_app.append(schedule.to_dict())
+            return jsonify({"status": 1, "data": data_app})
+        except ValueError as v:
+            traceback.print_exc()
+            return jsonify({"status": 0, "data": v.__str__()})
+        except Exception as e:
+            traceback.print_exc()
+            return jsonify({"status": 0, "data": e.__str__()})
