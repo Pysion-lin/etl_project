@@ -93,6 +93,7 @@
 #     return df_copy
 import traceback
 import pandas as pd
+from ETLSchedule.utils.Logger import logger
 
 
 # 组装任务(该方法处理mapping功能)
@@ -163,7 +164,7 @@ def get_task(data_dict,task_id):
         # print('df1:', df["WJID"])
         # print('df2:', df["CREATE_TIME"])
         # print('df3:',type(df["CREATE_TIME"]))
-        loader.sql_to_mysql(df, target, primary_key, extract,schema)
+        loader.sql_to_mysql(df, target, primary_key, extract,schema,logger)
         end = time.time()
         print("使用时间:", end - start)
         change_task_scheduler_status(session, task_id, "任务正常结束,本次花费时间:%s 秒"% int(end-start), 2)

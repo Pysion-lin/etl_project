@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import datetime, time
 import traceback
+import os,sys
 
 
 class LoadData(object):
@@ -31,7 +32,7 @@ class LoadData(object):
     #     # data_result = dataframe.applay(self.save_data)
     #     print("start load data")
 
-    def insert_mysql_data(self, engine, table_name, data_dict):
+    def insert_mysql_data(self, engine, table_name, data_dict, logger):
         # sql_comment = "insert into  {table_name} {filed_list}  values {data_tuple}".format(
         #                 table_name=table_name,filed_list=filed_list, data_tuple=data_tuple)
         # sql_comment = "insert into tb_bdm_employee 'EmployeeID'  values 5"
@@ -62,11 +63,18 @@ class LoadData(object):
             # result = conn.execute(tb_bdm_employee.insert(), [data_dict])
 
             return result.lastrowid
+
         except Exception as e:
+            traceback.print_exc()
+            file_path = os.path.join(sys.path[0], "log",
+                                     "%s" % datetime.datetime.strftime(datetime.datetime.now(), "%Y-%m-%d"))
+            log = logger(filename=file_path)
+            log.removeHandler(log.handlers)
+            log.info(e.__str__())
             traceback.print_exc()
             return None
 
-    def multi_insert_mysql_data(self, engine, data_dict):
+    def multi_insert_mysql_data(self, engine, data_dict, logger):
         # print('new_dict',new_dict)
         # 连接引擎
         # conn = engine.connect()
@@ -89,6 +97,11 @@ class LoadData(object):
                     result = conn.execute(ins, **data)
             return result.lastrowid
         except Exception as e:
+            file_path = os.path.join(sys.path[0], "log",
+                                     "%s" % datetime.datetime.strftime(datetime.datetime.now(), "%Y-%m-%d"))
+            log = logger(filename=file_path)
+            log.removeHandler(log.handlers)
+            log.info(e.__str__())
             traceback.print_exc()
             return False
 
@@ -97,7 +110,7 @@ class LoadData(object):
         result = cursor.fetchall()
         return result
 
-    def update_mysql_data(self, engine, schema, table_name, data_dict, where):
+    def update_mysql_data(self, engine, schema, table_name, data_dict, where, logger):
         # sql_comment = 'UPDATE %s SET ' % table_name + ','.join(['%s=%r' % (k, data_dict[k]) for k in data_dict]) + ' WHERE %s=%r;' % (where[0], where[1])
         # cursor = session.execute(sql_comment)
         # session.commit()
@@ -121,12 +134,17 @@ class LoadData(object):
             result = conn.execute(ins)
             return result
         except Exception as e:
+            file_path = os.path.join(sys.path[0], "log",
+                                     "%s" % datetime.datetime.strftime(datetime.datetime.now(), "%Y-%m-%d"))
+            log = logger(filename=file_path)
+            log.removeHandler(log.handlers)
+            log.info(e.__str__())
             traceback.print_exc()
             return None
 
         # return result
 
-    def sql_to_mysql(self, df, target, primary_key, extract, schema):
+    def sql_to_mysql(self, df, target, primary_key, extract, schema, logger):
         from pandas.api.types import is_datetime64_any_dtype
         session = extract.create_mysql_session__(target["connect"])
         engine = extract.create_mysql_engin__(target["connect"])
@@ -153,20 +171,20 @@ class LoadData(object):
                             data_dict[key] = None
                     if not ret:  # 如果结果不存在,将数据插入
                         print("row[name]", row[name])
-                        self.insert_mysql_data(engine, target.get("table"), data_dict)
+                        self.insert_mysql_data(engine, target.get("table"), data_dict, logger)
                     else:  # 如果结果存在,将数据更新
                         where = (name, data_dict[name])
                         # 剔除主键的字段,不然会报错
                         del data_dict[name]
                         if not data_dict:
                             raise Exception("任务可能由于没有目标列报错,请检查任务!")
-                        self.update_mysql_data(engine, schema, target.get("table"), data_dict, where)
+                        self.update_mysql_data(engine, schema, target.get("table"), data_dict, where, logger)
                 else:
                     raise ValueError("主键:{} 不存在SQL语句中".format(name))
         else:
             raise Exception("目前只支持mysql目标库")
 
-    def serial_sql_to_mysql(self, df, target, primary_key, extract, schema):
+    def serial_sql_to_mysql(self, df, target, primary_key, extract, schema, logger):
         session = extract.create_mysql_session__(target["connect"])
         if target.get("type") == 1:  # mysql方式
             for index, row in df.iteritems():
@@ -187,18 +205,18 @@ class LoadData(object):
                     if data_dict.get("Version"):
                         data_dict["Version"] = None
                     if not ret:  # 如果结果不存在,将数据插入
-                        self.insert_mysql_data(engine, target.get("table"), data_dict)
+                        self.insert_mysql_data(engine, target.get("table"), data_dict, logger)
                     else:  # 如果结果存在,将数据更新
                         where = (name, data_dict[name])
                         # 剔除主键的字段,不然会报错
                         del data_dict[name]
                         if not data_dict:
                             raise Exception("任务可能由于没有目标列报错,请检查任务!")
-                        self.update_mysql_data(engine, schema, target.get("table"), data_dict, where)
+                        self.update_mysql_data(engine, schema, target.get("table"), data_dict, where, logger)
                 else:
                     raise ValueError("主键:{} 不存在SQL语句中".format(name))
 
-    def sql_to_record_mysql(self, df, target, primary_key, extract, schema):
+    def sql_to_record_mysql(self, df, target, primary_key, extract, schema, logger):
         session = extract.create_mysql_session__(target["connect"])
         engine = extract.create_mysql_engin__(target["connect"])
         try:
@@ -257,24 +275,24 @@ class LoadData(object):
                         all_execute.append({"personal_info": personal_info_dict})
                         for tj_record_dict in tj_record_list:
                             all_execute.append({"tj_record": tj_record_dict})
-                        res = self.multi_insert_mysql_data(engine, all_execute)
+                        res = self.multi_insert_mysql_data(engine, all_execute, logger)
                         # print('res:',res)
                         if res:  # TODO 此处需要在处理当插入数据错误时,需要删除前面新建的个人信息和体检主表
                             for tj_result in tj_result_list:
                                 tj_result["ID_O"] = res
-                                ret = self.insert_mysql_data(engine, "tj_result", tj_result)
+                                ret = self.insert_mysql_data(engine, "tj_result", tj_result,logger)
                             for tj_item in tj_items_list:   # 将ti_item数据入库
                                 tj_item["ID_O"] = res
                                 # 更新test_apply的DABH
                                 where = ("ID", tj_item['OLD_ID'])
-                                self.update_mysql_data(engine, schema, "test_apply", {"DABH": tj_item.get("DABH")}, where)
+                                self.update_mysql_data(engine, schema, "test_apply", {"DABH": tj_item.get("DABH")}, where,logger)
                                 tj_item = self.change_NaT(tj_item)
-                                ret = self.insert_mysql_data(engine, "tj_items", tj_item)
+                                ret = self.insert_mysql_data(engine, "tj_items", tj_item, logger)
                                 if ret:   # 根据tj_item返回的主键ID将tj_item_detail入库
                                     for tj_item_detail in tj_item_detail_list:
                                         tj_item_detail["TJ_ITEMID"] = ret
                                         tj_item_detail = self.change_NaT(tj_item_detail)
-                                        rest = self.insert_mysql_data(engine, "tj_item_detail", tj_item_detail)
+                                        rest = self.insert_mysql_data(engine, "tj_item_detail", tj_item_detail, logger)
                         else:
                             raise Exception("数据插入错误")
 
@@ -283,7 +301,7 @@ class LoadData(object):
                         # 更新个人信息表(通过档案编号更新)
                         where = ("DABH", info_DABH)
                         del personal_info_dict['OLD_ID']
-                        self.update_mysql_data(engine, schema, "personal_info", personal_info_dict, where)
+                        self.update_mysql_data(engine, schema, "personal_info", personal_info_dict, where, logger)
                         # print('tmp2_table2',tmp2_table2)
                         tj_record_ret = self.select_mysql_data(session, "select * from %s where %s=%r limit 1" % ("tj_record", "DABH", info_DABH))  # 获取该条数据个人信息下的tj_record
                         # print("tj_record_ret",tj_record_ret)
@@ -295,7 +313,7 @@ class LoadData(object):
                             for tj_record_dict in tj_record_list:
                                 where = ("ID_O", tj_record_ret[0][0])
                                 tj_record_dict["ID_O"] = tj_record_ret[0][0]
-                                ret = self.update_mysql_data(engine, schema, "tj_record", tj_record_dict, where)
+                                ret = self.update_mysql_data(engine, schema, "tj_record", tj_record_dict, where, logger)
                             # 更新或者插入tj_result
                             tj_result_ret = self.select_mysql_data(session, "select * from %s where %s=%r" % (
                                 "tj_result", "ID_O", tj_record_ret[0][0]))  # 获取该条数据个人信息下的tj_record的所有tj_result
@@ -315,15 +333,15 @@ class LoadData(object):
                                         del tj_result["DABH"]
                                     if rest:
                                         where = ("TJJLID",rest[0][0])
-                                        ret = self.update_mysql_data(engine, schema, "tj_result", tj_result, where)
+                                        ret = self.update_mysql_data(engine, schema, "tj_result", tj_result, where, logger)
                                     else:
                                         res = tj_record_ret[0][0]
                                         tj_result["ID_O"] = res
-                                        self.insert_mysql_data(engine, "tj_result", tj_result)
+                                        self.insert_mysql_data(engine, "tj_result", tj_result, logger)
                             else:
                                 for tj_result in tj_result_list:
                                     tj_result["ID_O"] = tj_record_ret[0][0]
-                                    ret = self.insert_mysql_data(engine, "tj_result", tj_result)
+                                    ret = self.insert_mysql_data(engine, "tj_result", tj_result, logger)
 
                             # 更新tj_items 使用tj_record返回的ID
                             for tj_item_dict in tj_items_list:
@@ -331,7 +349,7 @@ class LoadData(object):
                                 if tj_item_dict.get("OLD_ID"):
                                     del tj_item_dict["OLD_ID"]
                                 tj_item_dict = self.change_NaT(tj_item_dict)
-                                ret = self.update_mysql_data(engine, schema, "tj_items", tj_item_dict, where)
+                                ret = self.update_mysql_data(engine, schema, "tj_items", tj_item_dict, where, logger)
                                 if ret:
                                     # print("tj_item_detail_list",tj_item_detail_list)
                                     sql = "select * from tj_item_detail where %s = %r limit 1" % ("TJ_ITEMID",tj_item_dict["ID"])
@@ -342,7 +360,7 @@ class LoadData(object):
                                             where = ("ID", rest[0][0])
                                             tj_item_detail_dict = self.change_NaT(tj_item_detail_dict)
                                             tj_item_detail_dict["ID"] = rest[0][0]
-                                            ret = self.update_mysql_data(engine, schema, "tj_item_detail", tj_item_detail_dict, where)
+                                            ret = self.update_mysql_data(engine, schema, "tj_item_detail", tj_item_detail_dict, where, logger)
 
             else:
                 raise Exception("目前只支持mysql目标库")

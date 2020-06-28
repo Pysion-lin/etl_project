@@ -1,4 +1,5 @@
 import traceback
+from ETLSchedule.utils.Logger import logger
 
 
 def get_task(data_dict,task_id):
@@ -30,7 +31,7 @@ def get_task(data_dict,task_id):
                 df = df.where(df.notnull(), None)
                 func = getattr(transform, k)
                 df = func(df,extract,source_connect)
-        loader.sql_to_record_mysql(df, target, primary_key, extract, schema)
+        loader.sql_to_record_mysql(df, target, primary_key, extract, schema,logger)
         end = time.time()
         print("使用时间:",end-start)
         change_task_scheduler_status(task_id, "任务正常结束,本次花费时间:%s 秒"% int(end-start), 2)
