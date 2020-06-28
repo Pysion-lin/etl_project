@@ -5,6 +5,9 @@ from ETLSchedule.ETL.extracter.extract import Extract
 from ETLSchedule.ETL.transformer.trannform import BaseTransForm
 from ETLSchedule.ETL.loader.loader import LoadData
 from sqlalchemy.exc import InternalError
+import pandas as pd
+from ETLSchedule.task.task import task_middle_recode
+from ETLSchedule.task.task import task_middle_product
 
 
 def run(scheduler):
@@ -17,7 +20,7 @@ def run(scheduler):
             task_app = get_start_task()
             # 获取task
             for task in task_app:
-                start_task(scheduler, task["task"], task["interval"], task["TaskID"], task["task_scheduler"])
+                start_task(scheduler, task["task"], task["interval"], task["TaskID"], task["task_scheduler"],task["type"])
             # 修改task的status
             pause_resume_task_scheduler(scheduler,get_task_scheduler_status())
 
@@ -59,7 +62,7 @@ def pause_resume_task_scheduler(scheduler, scheduler_status):
                     scheduler.scheduler.pause_job(task_id)
                     # change_task_scheduler_status(session,task_id,"任务正常暂停",0)
                 if status == -1:
-                    scheduler.scheduler.pause_job(task_id)
+                    scheduler.scheduler.remove_job(task_id)
                     # change_task_scheduler_status(session, task_id, "任务出错暂停", 0)
                 if status == 1:
                     scheduler.scheduler.resume_job(task_id)
@@ -76,7 +79,7 @@ def get_start_task():
                 # print('task_scheduler.task_id',task_scheduler.task_id)
                 task_app.append({"task": session.query(TaskModel).filter_by(id=task_scheduler.task_id).first(),
                                  "interval": int(task_scheduler.schedule), "TaskID": task_scheduler.TaskID,
-                                 "task_scheduler": task_scheduler})
+                                 "task_scheduler": task_scheduler,"type":int(task_scheduler.type)})
         return task_app
     except Exception as e:
         traceback.print_exc()
@@ -86,71 +89,6 @@ def get_start_task():
 def parse_task_parameter(task):
     dict_data = task.to_dict()
     return dict_data
-
-
-# 组装任务(该方法处理mapping功能)
-def get_task(data_dict,task_id):
-    from sqlalchemy.sql import schema
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import sessionmaker
-    from ETLSchedule.settings.dev import DATABASE_URL
-    engine = create_engine(DATABASE_URL, max_overflow=5)  # 创建项目数据库连接，max_overflow指定最大连接数
-    DBSession = sessionmaker(engine)  # 创建项目数据库DBSession类型
-    session = DBSession()  # 创建项目数据库session对象
-
-    try:
-        # data_dict = parse_task_parameter(task)
-        source = eval(data_dict["source"])
-        target, source_connect, primary_key = eval(data_dict["target"]), source.get('connect'), eval(
-            data_dict["primary_key"])
-        extract, loader, transform, from_sql = Extract(), LoadData(), BaseTransForm(), source.get('sql')
-        data_frame = extract.read_sqlserver(from_sql, source_connect)
-        methods = eval(data_dict["methods"])
-        df = data_frame
-        # 检查target是否存在
-        mapping_columns = []
-        target_columns = []
-        source_columns = []
-        for method in methods:
-            for k, v in method.items():
-                func = getattr(transform, k)
-                df = func(df, **v)
-                if {v["column"]:v["to_column"]} not in mapping_columns:
-                    target_columns.append(v["to_column"])
-                    source_columns.append(v["column"])
-                    mapping_columns.append({v["column"]:v["to_column"]})
-        df = change_source_hearder_target(df,mapping_columns,source_columns,target_columns)
-        loader.sql_to_mysql(df, target, primary_key, extract,schema)
-        change_task_scheduler_status(session, task_id, "任务正常运行中...", 2)
-    except Exception as e:
-        traceback.print_exc()
-        print("任务运行失败:{}".format(e.__str__()))
-        change_task_scheduler_status(session,task_id,e.__str__(),-1)
-
-
-# 任务执行失败时,将对应任务状态修改为出错
-def change_task_scheduler_status(session,task_id,e,status):
-    from ETLSchedule.models.models import TaskScheduleModel
-    try:
-        print(session,task_id,e,status)
-        scheduler = session.query(TaskScheduleModel).filter_by(TaskID=task_id).first()
-        if scheduler:
-            scheduler.status = status
-            scheduler.logs = e
-        session.commit()
-    except Exception as e:
-        traceback.print_exc()
-
-
-# 修改所有源列名的映射关系并修改改为目标的列名
-def change_source_hearder_target(source_df,mapping_columns,source_columns,target_columns):
-    # all_source_column = source_df.columns.values.tolist()
-    source_df = source_df[source_columns]
-    df_copy = source_df.copy()
-    for mapping in mapping_columns:
-        df_copy.rename(columns=mapping,inplace=True,copy=False)
-    df_copy = df_copy[target_columns]
-    return df_copy
 
 
 # 获取所有正在运行的任务id
@@ -163,12 +101,17 @@ def get_all_running_task_id(scheduler):
 
 
 # 添加任务到任务调度器中并将任务计划的状态重置为2,表示当前任务正在进行
-def start_task(scheduler, task, interval, task_id, task_scheduler):
+def start_task(scheduler, task, interval, task_id, task_scheduler,task_type):
     try:
         jod_store = get_all_running_task_id(scheduler)
         if task_id not in jod_store:
             data_dict = parse_task_parameter(task)
-            scheduler.scheduler.add_job(get_task, trigger="interval", seconds=interval, id=task_id, args=[data_dict,task_id])
+            if task_type == 1:  # 到中间库
+                scheduler.scheduler.add_job(task_middle_product.get_task, trigger="interval", seconds=interval,
+                                            id=task_id, args=[data_dict,task_id])
+            elif task_type == 2:  # 到档案库
+                scheduler.scheduler.add_job(task_middle_recode.get_task, trigger="interval", seconds=interval, id=task_id,
+                                            args=[data_dict, task_id])
             task_scheduler.status = 2
             session.commit()
     except Exception as e:

@@ -1,7 +1,7 @@
 from ETLSchedule.ETL.transformer.trannform import BaseTransForm
 from .GetFunctionArgs import get_func_args
 from ETLSchedule.models import session
-from ETLSchedule.models.models import TransformModel
+from ETLSchedule.models.models import TransformModel,TaskModel
 import traceback
 
 
@@ -23,6 +23,18 @@ def update_resource():
                 # else:
                 #     print("请配置transform的init属性值,name:{},property_name:{}".format(name,property_name))
                     # Exception("请配置transform的init属性值")
+        source = '''{"connect": {"database": "db_mid_bigdata", "ip": "192.168.1.100", "password": "longseeuser01", "port": 3306, 
+            "user": "user01"}, "id": 2, "sql": "select * from test_apply where WJID != 'NULL';", "type": 1}'''
+        target = "{'connect': {'database': 'db_mid_bigdata', 'ip': '192.168.1.100', 'password': 'longseeuser01'," \
+                 " 'port': 3306, 'user': 'user01'}, 'id': 2, 'table': 'wj_answer_copy1', 'type': 1}"
+        methods = "[{'translate': {}}]"
+        primary_key = "{'to_primary_field': 'ID'}"
+        task_instance = session.query(TaskModel).filter_by(name="档案库任务").first()
+        if not task_instance:
+            task = TaskModel(name="档案库任务",source=source,methods=methods,target=target,primary_key=primary_key)
+            session.add(task)
+        # else:
+        #     session.query(TaskModel).filter_by(name="档案库任务").update({"source":source,"methods":methods,"target":target,"primary_key":primary_key})
         try:
             session.commit()
         except Exception as e:

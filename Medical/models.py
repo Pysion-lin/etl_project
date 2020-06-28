@@ -134,6 +134,7 @@ class TaskScheduleModel(db.Model):
     schedule = db.Column(db.String)
     status = db.Column(db.Integer)
     logs = db.Column(db.String)
+    type = db.Column(db.String)
 
     def to_dict(self):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}

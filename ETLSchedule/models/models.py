@@ -44,6 +44,7 @@ class TaskScheduleModel(BaseModel):
     schedule = Column(String)
     status = Column(Integer)
     logs = Column(String)
+    type = Column(String)
 
 
 class TBEmployeeModel(BaseModel):

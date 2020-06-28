@@ -1,5 +1,5 @@
 import pandas as pd
-
+import traceback
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -81,8 +81,8 @@ class Extract(object):
                 df = pd.read_sql(sql, con)  # 获取数据
                 con.close()
         except Exception as e:
+            traceback.print_exc()
             df = None
-        print("read_mysql:",df)
         return df
 
     def create_sqlserver_engin__(self, connect):

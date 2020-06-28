@@ -10,12 +10,14 @@ ALL_QUEUE = [
 
 ]
 
-# 创建数据库连接
-DATABASE_URL = "mysql+pymysql://root:12345678@192.168.11.31:3306/{}?charset=utf8".format("pyetl")
+# 创建数据库连接(任务存储端)
+DATABASE_URL = "mysql+pymysql://root:12345678@192.168.11.61:3306/{}?charset=utf8".format("pyetl")
 
 # 创建数据库连接(输入端)
 DATABASE_URL_INPUT = r"mssql+pymssql://test:test@192.168.1.100\sql2008/CRM"
 
 # 创建SQL Server连接
-SQLSERVER_URL= ""
+SQLSERVER_URL = ""
+
+
 

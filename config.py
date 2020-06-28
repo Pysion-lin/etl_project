@@ -5,7 +5,7 @@ class Config(object):
     SECRET_KEY = "xhosido*F(DHSDF*D(SDdslfhdos"
 
     # 数据库的配置信息 mysql
-    SQLALCHEMY_DATABASE_URI = "mysql+pymysql://root:12345678@192.168.11.31:3306/pyetl"
+    SQLALCHEMY_DATABASE_URI = "mysql+pymysql://root:12345678@192.168.11.61:3306/pyetl"
     SQLALCHEMY_TRACK_MODIFICATIONS = True
     WTF_CSRF_EXEMPT_LIST = ["*"]
 

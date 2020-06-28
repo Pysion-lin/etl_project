@@ -48,7 +48,7 @@ class TestConnect(object):
         database = parameter["database"]
         mysql_database_url = "mysql+pymysql://{user}:{password}@{ip}:{port}/{database}?charset=utf8".format(
             user=user, password=password, ip=ip, port=port, database=database)
-
+        print('mysql_database_url',mysql_database_url)
         self.mysql_connect(mysql_database_url)
         self.mysql_test()
 
