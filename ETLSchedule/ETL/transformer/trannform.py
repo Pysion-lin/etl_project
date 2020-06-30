@@ -7,13 +7,14 @@ import numpy as np
 class BaseTransForm(object):
 
     def __init__(self):
+        '''输入列和输出列固定为column和to_column,select_type:固定为选中类型.这样方便在界面填写参数时的规范'''
         self.mapping_dict = {"module_id":1,"primary_key":False}
-        self.split_data_dict = {"module_id":2,"primary_key":False}
+        # self.split_data_dict = {"module_id":2,"primary_key":False}
         self.select_primary_key_dict = {"module_id":3,"primary_key":True}
         self.transform_type_dict = {"module_id":4,"primary_key":False}
-        self.virtual_field_dict = {"module_id":5,"primary_key":False}
-        self.none_transfrom_value_dict = {"module_id":4,"primary_key":False}
-        self.trans_position_dict = {"module_id":4,"primary_key":False}
+        # self.virtual_field_dict = {"module_id":5,"primary_key":False}
+        # self.none_transfrom_value_dict = {"module_id":4,"primary_key":False}
+        # self.trans_position_dict = {"module_id":4,"primary_key":False}
 
     def mapping(self,dataframe,column,from_data,to_data,to_column):
         '''将某一列的值进行映射,column:列名,from_data:源数据,to_data:目标数据,to_column:目标列,如果from_data或者to_data为空则不做任何处理'''
@@ -33,9 +34,9 @@ class BaseTransForm(object):
         此处仅提供可视化选择对应的参数列表,实际处理在loader模块,column:源列名,to_column:目标列'''
         return dataframe
 
-    def transform_type(self,dataframe,column,target_type):
-        '''类型转换函数,column:要进行转换的列,target_type:要转换成的类型,如果类型转换到目标库时失败任务将停止'''
-        dataframe[column] = dataframe[column].map(lambda x:eval(target_type)(x))
+    def transform_type(self,dataframe,column,select_type):
+        '''类型转换函数,column:要进行转换的列,select_type:要转换成的类型(请输入int,str),如果类型转换到目标库时失败任务将停止'''
+        dataframe[column] = dataframe[column].map(lambda x:eval(select_type)(x))
         return dataframe
 
     def virtual_field(self,dataframe,virtual_column,to_column):
@@ -128,37 +129,45 @@ class BaseTransForm(object):
                     new_wj_answer_df = new_wj_answer_df.where(wj_answer_df.notnull(), None)
                     for table1_index, wj_answer_row in new_wj_answer_df.iterrows():  # 每一条问卷的信息
                         tj_result_tmp = {}
-                        if wj_answer_row["QUESTION_CLASS"] == 2:  # 如果问卷问题类型为2,则查询wj_items中是否存在对应的answer的值
+                        if int(wj_answer_row["QUESTION_CLASS"]) == 2:  # 如果问卷问题类型为2,则查询wj_items中是否存在对应的answer的值
                             answer = wj_answer_row["ANSWER"]
                             list_content_id = wj_answer_row["WJ_LIST_CONTENT_ID"]
-                            # print('answer:',answer,'type:',type(answer))
                             try:
-                                res = re.match(r"^(?P<num>[0-9]\d+)|(?P<list>\[.+?\])$", answer) # 回答问题可能存在字符串或者列表两种情况
+                                # result = str(answer).split(",")
+                                res = re.match(r"^(?P<num>[0-9]\d*)|(?P<list>\[.+?\])$", answer) # 回答问题可能存在字符串或者列表两种情况
                                 if res:
                                     if res.lastgroup == "num":
                                         answer = int(res.group(0))
                                     if res.lastgroup == "list":
                                         answer = eval(res.group(0))
+                                else:
+                                    print("answer:%s 无法被 re.match 匹配" % answer)
+                                    continue
                             except Exception as s:
                                 traceback.print_exc()
                                 print("问卷表中出现不可转换的数据类型list_content_id:%s answer:%s ID:%s .该条问卷信息将被跳过" % (list_content_id,answer,wj_answer_row["ID"]))
                                 continue  # 这条问卷信息跳出
                             all_res_df = []
-                            if answer and type(answer) is int:
-                                res_df = wj_items_df_3.query('ID == "%s"' % answer).query('WJ_LIST_CONTENT_ID == "%s"' % list_content_id)
+                            if type(answer) is int:
+                                res_df = wj_items_df_3.query('ID == %s' % answer).query('WJ_LIST_CONTENT_ID == %s' % list_content_id)
                                 if len(res_df) > 0:
                                     all_res_df.append(res_df)
-                            if answer and type(answer) is list:
+                                else:
+                                    print("无法从tj_items表中获取 ID=%s , WJ_LIST_CONTENT_ID=%s 的数据"% (answer, list_content_id))
+                            if type(answer) is list:
                                 for _answer in answer:
-                                    res_df = wj_items_df_3.query('ID == "%s"' % _answer).query(
-                                        'WJ_LIST_CONTENT_ID == "%s"' % list_content_id)
+                                    res_df = wj_items_df_3.query('ID == %s' % _answer).query('WJ_LIST_CONTENT_ID == %s' % list_content_id)
                                     if len(res_df) > 0:
                                         all_res_df.append(res_df)
+                                    else:
+                                        print("无法从tj_items表中获取 ID=%s , WJ_LIST_CONTENT_ID=%s 的数据" % (
+                                            answer, list_content_id))
                             for res_df in all_res_df:
                                 for index,row in res_df.iterrows():  # 获取到wj_items中的真实回答问题
                                     if row["WJ_LIST_CONTENT_ID"] and row["WJ_ITEMS_CONTENT_ID"]:
                                         real_list_content_id = row["WJ_LIST_CONTENT_ID"]
                                         real_answer = row["WJ_ITEMS_CONTENT_ID"]
+                                        # print("real_list_content_id",real_list_content_id,"real_answer",real_answer)
                                         target_table2_df = map_table_df.query('TYPEID == 2').query('SOURCE_FILED_ID == "%s"' % real_list_content_id).query('SOURCE_FIELD_CODE == "%s"' % real_answer)
                                         if len(target_table2_df) > 1:
                                             print("映射关系表中不能存在相同设置QUESTION_CLASS=2  real_list_content_id:%s real_answer:%s " % (real_list_content_id,real_answer))
@@ -167,7 +176,7 @@ class BaseTransForm(object):
                                             print("无法获取映射表中的映射关系QUESTION_CLASS=2 real_list_content_id %s real_answer:%s " % (real_list_content_id,real_answer))
                                             # break
                                         for index1,row1 in target_table2_df.iterrows():  # 在映射表中获取到映射关系
-                                            if row1["CLASSID"] == 1:
+                                            if int(row1["CLASSID"]) == 1:
                                                 TARGET_TABLE = row1.get("TARGET_TABLE")
                                                 if TARGET_TABLE == "personal_info":  # 到个人信息库
                                                     personal_info_tmp.setdefault(row1["TARGET_FILED_ID"], row1["TARGET_FILED_VALUE"])
@@ -175,14 +184,14 @@ class BaseTransForm(object):
                                                 if TARGET_TABLE == "tj_record":  # 到体检库
                                                     tj_record_tmp.setdefault("DABH", DABH)
                                                     tj_record_tmp.setdefault(row1["TARGET_FILED_ID"], answer)
-                                            elif row1["CLASSID"] == 2:
+                                            elif int(row1["CLASSID"]) == 2:
                                                 tj_result_tmp.setdefault(row1["TARGET_FILED_ID"], row1["TARGET_FILED_VALUE"])
                                                 if not tj_result_tmp.get("DICT_CODE"):
                                                     tj_result_tmp["DICT_CODE"] = row1["TARGET_FILED_CODE"]
                                             break  # 只取第一条
                                     break  # 只取第一条
 
-                        if wj_answer_row["QUESTION_CLASS"] == 1:  # 如果问卷问题类型为2,则查询wj_items中是否存在对应的answer的值
+                        if int(wj_answer_row["QUESTION_CLASS"]) == 1:  # 如果问卷问题类型为2,则查询wj_items中是否存在对应的answer的值
                             pd.set_option('display.max_rows', None)
                             answer = wj_answer_row["ANSWER"]
                             list_content_id = wj_answer_row["WJ_LIST_CONTENT_ID"]
@@ -194,7 +203,7 @@ class BaseTransForm(object):
                                 print("无法获取映射表中的映射关系QUESTION_CLASS=1 list_content_id %s answer:%s" % (list_content_id,answer))
                                 # break
                             for index1, row1 in target_table2_df.iterrows():  # 在映射表中获取到映射关系
-                                if row1["CLASSID"] == 1:
+                                if int(row1["CLASSID"]) == 1:
                                     TARGET_TABLE = row1.get("TARGET_TABLE")
                                     if int(wj_answer_row["WJ_LIST_CONTENT_ID"]) == 9:  # 特殊处理:将年龄与数据创建日期转化为出生日期
                                         birth_day = (source_column_1["CREATE_TIME"] - datetime.timedelta(days=int(answer) * 365)).strftime("%Y-%m-%d %H:%M:%S")
@@ -207,7 +216,7 @@ class BaseTransForm(object):
                                         if TARGET_TABLE == "tj_record":  # 到体检库
                                             tj_record_tmp.setdefault("DABH", DABH)
                                             tj_record_tmp.setdefault(row1["TARGET_FILED_ID"], answer)
-                                elif row1["CLASSID"] == 2:
+                                elif int(row1["CLASSID"]) == 2:
                                     tj_result_tmp.setdefault(row1["TARGET_FILED_ID"], wj_answer_row["ANSWER"])
                                     if not tj_result_tmp.get("DICT_CODE"):
                                         tj_result_tmp["DICT_CODE"] = row1["TARGET_FILED_CODE"]

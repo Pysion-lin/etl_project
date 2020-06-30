@@ -1,6 +1,6 @@
 from ETLSchedule.models import session
 from ETLSchedule.models.models import TransformModel, TaskModel, TaskScheduleModel
-import traceback
+import traceback,datetime
 from ETLSchedule.ETL.extracter.extract import Extract
 from ETLSchedule.ETL.transformer.trannform import BaseTransForm
 from ETLSchedule.ETL.loader.loader import LoadData
@@ -108,10 +108,10 @@ def start_task(scheduler, task, interval, task_id, task_scheduler,task_type):
             data_dict = parse_task_parameter(task)
             if task_type == 1:  # 到中间库
                 scheduler.scheduler.add_job(task_middle_product.get_task, trigger="interval", seconds=interval,
-                                            id=task_id, args=[data_dict,task_id])
+                                            id=task_id, args=[data_dict,task_id],next_run_time=datetime.datetime.now())
             elif task_type == 2:  # 到档案库
                 scheduler.scheduler.add_job(task_middle_recode.get_task, trigger="interval", seconds=interval, id=task_id,
-                                            args=[data_dict, task_id])
+                                            args=[data_dict, task_id],next_run_time=datetime.datetime.now())
             task_scheduler.status = 2
             session.commit()
     except Exception as e:

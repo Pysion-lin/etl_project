@@ -210,26 +210,75 @@ if __name__ == '__main__':
 #     a = "select * from s where 1 in (%s)" % (args)
 #     a = a % tuple(his_list)
 #     print(a)
-    import re
-    a = "0132512343"
-    b = '["天津市","市辖区"]'
-    c = "NAN"
-    d = 1
-    e = "天津市"
-    f = '["261"]'
-    # res = re.match(r"^[0-9]\d+$",a)
-    # res = re.match(r"^[0-9]\d+ | [.] $",a)
-    # res = re.match(r"^(?P<name>)[0-9]\d+$",a)
-    res = re.match(r"^(?P<num>[0-9]\d+)|(?P<list>\[.+?\])$",f)
-    if res:
-        if res.lastgroup == "num":
-            ret = int(res.group(0))
-            print(ret,type(ret))
-        if res.lastgroup == "list":
-            rex = eval(res.group(0))
-            print(rex,type(rex))
+
+    #
+    # import re
+    # a = "0132512343"
+    # b = '["天津市","市辖区"]'
+    # c = "NAN"
+    # d = 1
+    # e = "天津市"
+    # f = '["261"]'
+    # g = "1"
+    # h = "362,361"
+    # result = h.split(",")
+    # result = g.split(",")
+    # if result:
+    #     print("result",result)
+    # else:
+    #     res = re.match(r"(?P<list>\[.+?\])|(?P<new>(?P<num>[0-9]\d*),(?P=num))",h)  # (?P<num>[0-9]\d*)
+    #     # res = re.match(r"(?P<num>[0-9]\d*)|(?P<list>\[.+?\])|(?P=num),(?P=num)$",h)
+    #     print('res',res)
+    #     if res:
+    #         if res.lastgroup == "num":
+    #             ret = int(res.group(0))
+    #             print(ret,type(ret))
+    #         if res.lastgroup == "list":
+    #             rex = eval(res.group(0))
+    #             print(rex,type(rex))
     # print(int(a))
     # print(a.zfill(4))
     # print(a.format("1"))
+
+    # import pandas as pd
+    # from ETLSchedule.ETL.extracter.extract import Extract
+    # pd.set_option('display.max_rows', None)
+    # extract = Extract()
+    # source = '''{"connect": {"database": "db_mid_bigdata", "ip": "192.168.1.100", "password": "longseeuser01", "port": 3306,
+    #     "user": "user01"}, "id": 2, "sql": "select * from test_apply where WJID != 'NULL';", "type": 1}'''
+    # source = eval(source)
+    # connect = source.get('connect')
+    # sql = source.get('sql')
+    # data_frame = extract.read_mysql(sql, connect)
+    # print("data_frame",data_frame)
+    # print("data_frame_describe",data_frame.describe())
+
+    # import pickle
+    # # def sayhi(name):
+    # #     print("hello,", name)
+    # def sayhi(name):
+    #     pass
+    #
+    #
+    # info = {'name': 'alex',
+    #         'age': 22,
+    #         'func': sayhi}
+    # f = open("test.text", "wb")
+    # pickle.dump(info, f)
+    # f.close()
+    # f = open("test.text","rb")
+    # info = pickle.load(f)
+    # print(info)
+    # f.close()
+    # sayhi = info.get("func")
+    # sayhi("sdfasd")
+
+    def test1(age:int,name:str):
+        print('age',age)
+        print('name',name)
+    # test1(18,'22')
+    test1("18",22)
+
+
 
 

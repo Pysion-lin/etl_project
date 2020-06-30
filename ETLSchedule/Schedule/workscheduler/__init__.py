@@ -36,7 +36,7 @@ class ApSchedulerProcess(object):
         self.data = data
         if self.scheduler:
             if trigger == "interval":
-                self.scheduler.add_job(job, trigger='interval', seconds=self.seconds, id=self.id,args=self.data)
+                self.scheduler.add_job(job, trigger='interval', seconds=self.seconds, id=self.id,args=self.data,next_run_time=datetime.datetime.now())
             elif trigger == "cron":
                 self.scheduler.add_job(job, trigger='cron', month='6-8,11-12', day='3rd fri', hour='0-3', id=self.id, args=self.data)
             elif trigger == "date":

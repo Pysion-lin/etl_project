@@ -267,7 +267,7 @@ class LoadData(object):
 
                     # 更新wj_answer表的DABH
                     where = ("ID", personal_info_dict['OLD_ID'])  # 再transform时将OLD_ID添加到personal_info中,更新完wj_answer_master将其删除
-                    self.update_mysql_data(engine, schema, "wj_answer_master", {"DABH": info_DABH}, where)
+                    self.update_mysql_data(engine, schema, "wj_answer_master", {"DABH": info_DABH}, where, logger)
                     result = self.personal_de_weight_strategy(session,personal_info_field_list, personal_info_dict)
                     if not result:  # 如果结果不存在,将数据插入
                         print("INSERT:")
