@@ -12,7 +12,7 @@ def get_task(data_dict,task_id):
         start = time.time()
         # data_dict = parse_task_parameter(task)
         source = eval(data_dict["source"])
-        target, source_connect, primary_key = eval(data_dict["target"]), source.get('connect'), eval(
+        target, source_connect, primary_key = eval(data_dict["target"]), source.get("connect"), eval(
             data_dict["primary_key"])
         extract, loader, transform, from_sql = Extract(), LoadData(), BaseTransForm(), source.get('sql')
         if int(source.get("type")) == 2:
@@ -30,8 +30,8 @@ def get_task(data_dict,task_id):
             for k, v in method.items():
                 df = df.where(df.notnull(), None)
                 func = getattr(transform, k)
-                df = func(df,extract,source_connect)
-        loader.sql_to_record_mysql(df, target, primary_key, extract, schema,logger)
+                df = func(df,extract,source_connect,session,schema,logger)
+        loader.sql_to_personal_mysql(df, target, extract, schema,logger)
         end = time.time()
         print("使用时间:",end-start)
         change_task_scheduler_status(task_id, "任务正常结束,本次花费时间:%s 秒"% int(end-start), 2)
@@ -59,12 +59,12 @@ def change_task_scheduler_status(task_id,e,status):
 
 if __name__ == '__main__':
     source ='''{"connect": {"database": "db_mid_bigdata", "ip": "192.168.1.100", "password": "longseeuser01", "port": 3306, 
-    "user": "user01"}, "id": 2, "sql": "select * from test_apply where WJID != 'NULL';", "type": 1}'''
+    "user": "user01"}, "id": 2, "sql": "select * from wj_answer_master;", "type": 1}'''
     target = "{'connect': {'database': 'db_mid_bigdata', 'ip': '192.168.1.100', 'password': 'longseeuser01'," \
              " 'port': 3306, 'user': 'user01'}, 'id': 2, 'table': 'wj_answer_copy1', 'type': 1}"
     data_dict = {
                  'source': source, 'target': target,
-                 'methods': "[{'translate': {}}]",
+                 'methods': "[{'translate_personal_info': {}}]",
                  'primary_key': "{'to_primary_field': 'ID'}",
                  'name': 'vw_wj_answer_master'
                  }

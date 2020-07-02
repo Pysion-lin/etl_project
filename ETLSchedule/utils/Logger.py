@@ -1,6 +1,6 @@
 import logging
 from logging import handlers
-import os,sys
+import os,sys,datetime
 
 level_relations = {
         'debug':logging.DEBUG,
@@ -15,7 +15,11 @@ def logger(filename=None,level='info',when='D',backCount=0,fmt='%(asctime)s - %(
     if not filename:
         filename = os.path.join(sys.path[0], "logs", "%s" % "INFO.log")
     else:
-        filename = filename  # os.path.join(sys.path[0], "logs/%s" % filename)
+        filename = filename
+        print("filename",filename)
+        if not os.path.exists(filename):
+            f = open(filename, "w")
+            f.close()
     logger = logging.getLogger(filename)
     format_str = logging.Formatter(fmt)  # 设置日志格式
     logger.setLevel(level_relations.get(level))  # 设置日志级别

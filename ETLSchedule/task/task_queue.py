@@ -6,8 +6,8 @@ from ETLSchedule.ETL.transformer.trannform import BaseTransForm
 from ETLSchedule.ETL.loader.loader import LoadData
 from sqlalchemy.exc import InternalError
 import pandas as pd
-from ETLSchedule.task.task import task_middle_recode
-from ETLSchedule.task.task import task_middle_product
+from ETLSchedule.task.task import task_product_personal_info,task_product_test
+from ETLSchedule.task.task import task_middle
 
 
 def run(scheduler):
@@ -107,11 +107,16 @@ def start_task(scheduler, task, interval, task_id, task_scheduler,task_type):
         if task_id not in jod_store:
             data_dict = parse_task_parameter(task)
             if task_type == 1:  # 到中间库
-                scheduler.scheduler.add_job(task_middle_product.get_task, trigger="interval", seconds=interval,
-                                            id=task_id, args=[data_dict,task_id],next_run_time=datetime.datetime.now())
+                scheduler.scheduler.add_job(task_middle.get_task, trigger="interval", seconds=interval,
+                                            id=task_id, args=[data_dict,task_id], next_run_time=datetime.datetime.now())
             elif task_type == 2:  # 到档案库
-                scheduler.scheduler.add_job(task_middle_recode.get_task, trigger="interval", seconds=interval, id=task_id,
-                                            args=[data_dict, task_id],next_run_time=datetime.datetime.now())
+                scheduler.scheduler.add_job(task_product_personal_info.get_task, trigger="interval", seconds=interval, id=task_id,
+                                            args=[data_dict, task_id], next_run_time=datetime.datetime.now())  # 档案信息
+
+                scheduler.scheduler.add_job(task_product_test.get_task, trigger="interval", seconds=interval,
+                                            id=task_id,
+                                            args=[data_dict, task_id], next_run_time=datetime.datetime.now())  # 检测信息
+
             task_scheduler.status = 2
             session.commit()
     except Exception as e:

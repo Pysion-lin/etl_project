@@ -273,11 +273,26 @@ if __name__ == '__main__':
     # sayhi = info.get("func")
     # sayhi("sdfasd")
 
-    def test1(age:int,name:str):
-        print('age',age)
-        print('name',name)
-    # test1(18,'22')
-    test1("18",22)
+    # def test1(age:int,name:str):
+    #     print('age',age)
+    #     print('name',name)
+    # # test1(18,'22')
+    # test1("18",22)
+
+    import os,sys,datetime
+
+    file_path = os.path.join(sys.path[0], "logs",
+                             "%s.log" % datetime.datetime.strftime(datetime.datetime.now(), "%Y_%m_%d"))
+    f = open(file_path,"w")
+    f.close()
+
+    # if not os.path.exists(file_path):
+        # os.system(r"touch {}".format(filename))
+        # os.makedirs(filename)
+        # os.makedirs(filename)
+        # os.system(r"touch")
+        # print(file_path)
+        # os.system(r"touch {}".format(file_path))
 
 
 
