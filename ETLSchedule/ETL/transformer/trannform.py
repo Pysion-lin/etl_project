@@ -3,6 +3,7 @@ import pandas as pd
 import datetime, random, traceback,os,sys
 import numpy as np
 from ETLSchedule.models import engine, MetaData, Table
+from ETLSchedule import test_
 
 
 class BaseTransForm(object):
@@ -57,7 +58,7 @@ class BaseTransForm(object):
         dataframe = dataframe.stack()
         return dataframe
 
-    def translate_personal_info(self, dataframe, extract, source_connect, session,schema,logger, **kwargs):
+    def translate_personal_info(self, dataframe, extract, source_connect, target_connect, session,schema,logger, **kwargs):
         ''''
         独立函数,将wj_answer_master,wj_answer和map_table,wj_items等数据通过固定方式更新到personal_info,tj_record,tj_result中
         '''
@@ -75,10 +76,6 @@ class BaseTransForm(object):
         personal_finish_sql = "select * from personal_finish"
         empi_formula_sql = "select * from empi_formula"
         personal_info_sql = "select * from personal_info limit 1"
-        # test_apply_sql = 'select * from test_apply where WJID != "NULL";'
-        # tj_item_detail_sql = "select * from tj_item_detail"
-        # wj_answer_master_sql = "select * from wj_answer_master;"
-        # test_apply_detail_sql = "select * from test_apply_detail"
         tj_record_sql = "select * from tj_record limit 1"  # 只取字段名
         wj_answer_df = extract.read_mysql(wj_answer_sql, source_connect)
         tables2_df_1 = extract.read_mysql(table2_sql1, source_connect)
@@ -87,20 +84,13 @@ class BaseTransForm(object):
         wj_items_df_3 = extract.read_mysql(wj_items_sql, source_connect)
         personal_finish_df = extract.read_mysql(personal_finish_sql, source_connect)
         empi_formula_df = extract.read_mysql(empi_formula_sql, source_connect)
-        personal_info_df = extract.read_mysql(personal_info_sql, source_connect)
-        # wj_answer_master_df = extract.read_mysql(wj_answer_master_sql,source_connect)
-        # tj_item_detail_df = extract.read_mysql(tj_item_detail_sql,source_connect)
-        # test_apply_detail_df = extract.read_mysql(test_apply_detail_sql,source_connect)
-        tj_record_df = extract.read_mysql(tj_record_sql, source_connect)
+        personal_info_df = extract.read_mysql(personal_info_sql, target_connect)
+        tj_record_df = extract.read_mysql(tj_record_sql, target_connect)
         personal_info_columns = list(set([item for index, item in tables2_df_1["TARGET_FILED_ID"].iteritems()]))
         result_info_columns = list(set([item for index, item in tables2_df_2["TARGET_FILED_ID"].iteritems()]))
         record_df_columns = tj_record_df.columns.values.tolist()
-        # personal_finish_columns = personal_finish_df.columns.values.tolist()
-        # tj_items_columns = list(set(dataframe.columns.values.tolist()))
-        # tj_item_detail_columns = list(set(tj_item_detail_df.columns.values.tolist()))
         personal_finish_columns = personal_info_df.columns.values.tolist()
         personal_info_columns.append("OLD_ID")
-        # tj_items_columns.append("OLD_ID")
         result_info_columns.append("DICT_CODE")  # 这个DICT_CODE目的是为了第二次同步时,作为查询是否重复的依据
         result_info_columns.append("WJ_ANSWER_MASTER_ID")
         personal_info_df = pd.DataFrame(columns=personal_info_columns)
@@ -110,8 +100,8 @@ class BaseTransForm(object):
         engine = extract.create_mysql_engin__(source_connect)
         new_wj_answer_master_df = dataframe
         count_skip = 0
+        # print('new_wj_answer_master_df',new_wj_answer_master_df,sep='\r\n')
         for index, wj_answer_master_row in new_wj_answer_master_df.iterrows():  # 单个用户的问卷信息
-
             personal_info_tmp = {}
             tj_record_tmp = {}
             new_wj_answer_df = wj_answer_df.query('WJ_ANSWER_MASTER_ID == %s' % wj_answer_master_row["ID"])
@@ -119,18 +109,25 @@ class BaseTransForm(object):
             if len(new_wj_answer_df) == 0:
                 count_skip += 1
             for table1_index, wj_answer_row in new_wj_answer_df.iterrows():  # 每一条问卷的信息
+                # question_class = wj_answer_row.get("QUESTION_CLASS")
                 tj_result_tmp = {}
                 if int(wj_answer_row["QUESTION_CLASS"]) == 2:  # 如果问卷问题类型为2,则查询wj_items中是否存在对应的answer的值
                     answer = wj_answer_row["ANSWER"]
                     list_content_id = wj_answer_row["WJ_LIST_CONTENT_ID"]
                     try:
                         # result = str(answer).split(",")
-                        res = re.match(r"^(?P<num>[0-9]\d*)|(?P<list>\[.+?\])$", answer)  # 回答问题可能存在字符串或者列表两种情况
+                        # res = re.match(r"^(?P<num>[0-9]\d*)|(?P<list>\[.+?\])$", answer)  # 回答问题可能存在字符串或者列表两种情况
+                        res = re.match(r"^(?P<str>[0-9]\d*,[0-9]\d*)|(?P<num>[0-9]\d*)|(?P<list>\[.+?\])$", answer)  # 回答问题可能存在字符串或者列表两种情况
                         if res:
                             if res.lastgroup == "num":
                                 answer = int(res.group(0))
-                            if res.lastgroup == "list":
+                            elif res.lastgroup == "list":
                                 answer = eval(res.group(0))
+                            elif res.lastgroup == "str":
+                                ret = "[" + str(res.group(0)) + "]"
+                                answer = eval(ret)
+                            else:
+                                answer = None
                         else:
                             print("answer:%s 无法被 re.match 匹配" % answer)
                             # continue
@@ -140,7 +137,9 @@ class BaseTransForm(object):
                         list_content_id, answer, wj_answer_row["ID"]))
                         # continue  # 这条问卷信息跳出
                     all_res_df = []
+                    type_check = ""
                     if type(answer) is int:
+                        type_check = 'int'
                         res_df = wj_items_df_3.query('ID == %s' % answer).query(
                             'WJ_LIST_CONTENT_ID == %s' % list_content_id)
                         if len(res_df) > 0:
@@ -148,8 +147,9 @@ class BaseTransForm(object):
                         else:
                             print("无法从tj_items表中获取 ID=%s , WJ_LIST_CONTENT_ID=%s 的数据" % (answer, list_content_id))
                     if type(answer) is list:
+                        type_check = 'list'
                         for _answer in answer:
-                            res_df = wj_items_df_3.query('ID == %s' % _answer).query(
+                            res_df = wj_items_df_3.query('ID == %s' % int(_answer)).query(
                                 'WJ_LIST_CONTENT_ID == %s' % list_content_id)
                             if len(res_df) > 0:
                                 all_res_df.append(res_df)
@@ -169,11 +169,11 @@ class BaseTransForm(object):
                                 if len(target_table2_df) > 1:
                                     print("映射关系表中不能存在相同设置QUESTION_CLASS=2  real_list_content_id:%s real_answer:%s " % (
                                     real_list_content_id, real_answer))
-                                    # break
+                                    continue
                                 if len(target_table2_df) < 0:
                                     print("无法获取映射表中的映射关系QUESTION_CLASS=2 real_list_content_id %s real_answer:%s " % (
                                     real_list_content_id, real_answer))
-                                    # break
+                                    continue
                                 for index1, row1 in target_table2_df.iterrows():  # 在映射表中获取到映射关系
                                     if int(row1["CLASSID"]) == 1:
                                         TARGET_TABLE = row1.get("TARGET_TABLE")
@@ -183,9 +183,19 @@ class BaseTransForm(object):
                                             # tj_record_tmp.setdefault("DABH", DABH)
                                         if TARGET_TABLE == "tj_record":  # 到体检库
                                             # tj_record_tmp.setdefault("DABH", DABH)
-                                            tj_record_tmp.setdefault(row1["TARGET_FILED_ID"], answer)
+                                            # tj_record_tmp.setdefault(row1["TARGET_FILED_ID"], answer)
+                                            tj_record_tmp[row1["TARGET_FILED_ID"]] = answer
                                     elif int(row1["CLASSID"]) == 2:
-                                        tj_result_tmp.setdefault(row1["TARGET_FILED_ID"], row1["TARGET_FILED_VALUE"])
+                                        if type_check == 'int':
+                                            tj_result_tmp.setdefault(row1["TARGET_FILED_ID"], row1["TARGET_FILED_VALUE"])
+                                            # print("wj_answer_master_row: %s tj_result_tmp: %s " % (wj_answer_master_row["ID"],tj_result_tmp))
+                                        elif type_check == 'list':
+                                            tmp = tj_result_tmp.get(row1["TARGET_FILED_ID"])
+                                            if tmp:
+                                                tmp = tmp + "," + row1["TARGET_FILED_VALUE"]
+                                                tj_result_tmp[row1["TARGET_FILED_ID"]] = tmp
+                                            else:
+                                                tj_result_tmp[row1["TARGET_FILED_ID"]] = row1["TARGET_FILED_VALUE"]
                                         if not tj_result_tmp.get("DICT_CODE"):
                                             tj_result_tmp["DICT_CODE"] = row1["TARGET_FILED_CODE"]
                                     break  # 只取第一条
@@ -219,16 +229,19 @@ class BaseTransForm(object):
                                     # tj_record_tmp.setdefault("DABH", DABH)
                                 if TARGET_TABLE == "tj_record":  # 到体检库
                                     # tj_record_tmp.setdefault("DABH", DABH)
-                                    tj_record_tmp.setdefault(row1["TARGET_FILED_ID"], answer)
+                                    # tj_record_tmp.setdefault(row1["TARGET_FILED_ID"], answer)
+                                    tj_record_tmp[row1["TARGET_FILED_ID"]] = answer
                         elif int(row1["CLASSID"]) == 2:
                             tj_result_tmp.setdefault(row1["TARGET_FILED_ID"], wj_answer_row["ANSWER"])
                             if not tj_result_tmp.get("DICT_CODE"):
                                 tj_result_tmp["DICT_CODE"] = row1["TARGET_FILED_CODE"]
                         break  # 只取第一条
                 if tj_result_tmp:
-                    tj_result_tmp["WJ_ANSWER_MASTER_ID"] = wj_answer_master_row["ID"]
-                    new2 = pd.DataFrame(tj_result_tmp, index=[1])
-                    result_info_df = result_info_df.append(new2, ignore_index=True)
+                    id = wj_answer_master_row["ID"]
+                    tj_result_tmp["WJ_ANSWER_MASTER_ID"] = id
+                    new_result = pd.DataFrame(tj_result_tmp, index=[1])
+                    if len(new_result) > 0:
+                        result_info_df = result_info_df.append(new_result, ignore_index=True)
                 if personal_info_tmp:
                     personal_info_tmp.setdefault("OLD_ID", wj_answer_master_row["ID"])
             if personal_info_tmp:
@@ -236,33 +249,49 @@ class BaseTransForm(object):
                 if not wj_answer_master_row.get("DABH"):
                     DABH = self.select_personal_finish(session, personal_info_tmp, empi_formula_df,
                                                        personal_finish_columns,personal_info_df,engine,schema,logger)
-                    if DABH == "update":  # 该条数据只需要更新源数据的DABH
-                        continue
-                    else:
-                        if not DABH:
-                            DABH = self.create_DABH()
+                    # if DABH == "update":  # 该条数据只需要更新源数据的DABH
+                    #     continue
+                    # else:
+                    #     if not DABH:
+                    #         DABH = self.create_DABH()
+                    if not DABH:
+                        DABH = self.create_DABH()
                 else:
                     DABH = wj_answer_master_row.get("DABH")
-                    print("已存在的DABH:", DABH)
+                id = wj_answer_master_row["ID"]
+                # print("已存在的DABH:", DABH)
+
                 personal_info_tmp["DABH"] = DABH
                 new = pd.DataFrame(personal_info_tmp, index=[1])
                 personal_info_df = personal_info_df.append(new, ignore_index=True)
 
+                # print("tj_record_tmp",tj_record_tmp)
                 tj_record_tmp["DABH"] = DABH
                 new_record = pd.DataFrame(tj_record_tmp, index=[1])
                 tj_record_df = tj_record_df.append(new_record, ignore_index=True)
 
+                if len(personal_info_df) > 0:
+                    exist_personal_info_df = personal_info_df[personal_info_df.DABH == DABH]
+                    if len(exist_personal_info_df) == 1:
+                        # print("exist_personal_info_df",exist_personal_info_df)
+                        # 如果wj_answer_master存在重复的wj信息将personal_info和wj_record替换为wj_answer中最新的数据
+                        exist_id = exist_personal_info_df.get("OLD_ID")
+                        result_info_df = result_info_df.replace({int(id):int(exist_id)})
+
+        result_info_df.drop_duplicates(["DICT_CODE","WJ_ANSWER_MASTER_ID"],keep='last',inplace=True)
+        personal_info_df.drop_duplicates(["DABH"],keep='last',inplace=True)
+        tj_record_df.drop_duplicates(["DABH"],keep='last',inplace=True)
         personal_info_df = personal_info_df.where(personal_info_df.notnull(),None)
         result_info_df = result_info_df.where(result_info_df.notnull(),None)
         tj_record_df = tj_record_df.where(tj_record_df.notnull(),None)
-        # print("count_skip",count_skip)
         # print("test_apply_detail_df", test_apply_detail_df, sep='\r\n')
         # print("tj_item_detail_df_1", tj_item_detail_df_1, sep='\r\n')
         # print("tj_items_df", tj_items_df, sep='\r\n')
+        print("personal_info_df", personal_info_df,sep='\r\n')
         # print("personal_info_df", personal_info_df[["CITIZEN_NAME","DABH","PHONE_NUMBER","GENDER","DATE_BIRTHDAY","NATIONALITY"]], sep='\r\n')
-        print("personal_info_df", personal_info_df[["OLD_ID","CITIZEN_NAME","DABH"]], sep='\r\n')
-        # print("tj_record_df", tj_record_df, sep='\r\n')
-        print("result_info_df", result_info_df[["WJ_ANSWER_MASTER_ID","CRESULT"]], sep='\r\n')
+        # print("personal_info_df", personal_info_df[["OLD_ID","CITIZEN_NAME","DABH"]], sep='\r\n')
+        # print("tj_record_df", tj_record_df[["ID_O","DABH","DIAGNOSE_CODE"]], sep='\r\n')
+        print("result_info_df", result_info_df[["WJ_ANSWER_MASTER_ID","CODE","CRESULT","DICT_CODE"]], sep='\r\n')
         # print("personal_info_df", personal_info_df[["CONTACT_PHONE_NUMBER"]], sep='\r\n')
         # return
         return personal_info_df, result_info_df, personal_info_columns, result_info_columns, \
@@ -289,22 +318,23 @@ class BaseTransForm(object):
         '''
         sql = 'select * from %s where ' % "personal_info" + " and ".join(['%s=%r' %(key,value) for key,value in data_dict.items()])
         reult = self.select_mysql_data(session,sql)
-        if len(reult) > 0:
-            # print("data_dict1",data_dict)
+        if len(reult) > 0:  # 在目标库中已存在
+            print("source_personal_info_data_dict1",data_dict)
             return reult[0][0]
         else:
-            print("data_dict2",data_dict)
+            print("target_personal_info_data_dict",data_dict)
             conditions = []
             is_update = "update"
             for k, v in data_dict.items():
                 conditions.append("(personal_info_df." + k + " == " + "%r" % v + ")")
             condition = " & ".join(conditions)
-            # print("condition",condition)
+            print("condition",condition)
             old_personal_info = personal_info_df[eval(condition)]
             # print('old_personal_info',old_personal_info)
-            if len(old_personal_info) > 0:
+            if len(old_personal_info) > 0:  # 再中间库中已存在
                 # print("data_dict", data_dict)
-                print('old_personal_info', old_personal_info)
+                info_DABH = None
+                # print('old_personal_info', old_personal_info)
                 for index, row in old_personal_info.iterrows():
                     # 更新wj_answer_master表的DABH
                     print("更新ID:%s 数据,名称:%s ,DABH:%s"% (row.get("OLD_ID"),row.get("CITIZEN_NAME"),row.get("DABH")))
@@ -312,9 +342,10 @@ class BaseTransForm(object):
                     info_DABH = row.get("DABH")
                     where = ("ID", old_id)  # 再transform时将OLD_ID添加到personal_info中,更新完wj_answer_master将其删除
                     self.update_mysql_data(engine, schema, "wj_answer_master", {"DABH": info_DABH}, where, logger)
-                return is_update
+                # return is_update
+                return info_DABH
             else:
-                return False
+                return None
 
     def get_grade(self,group_id,empi_formula_group_df):
         try:
@@ -340,7 +371,7 @@ class BaseTransForm(object):
         # field_dict = {'CITIZEN_NAME': '陈小雪', 'OLD_ID': 100137, 'DATE_BIRTHDAY': '1978-01-02', 'CONTACT_PHONE_NUMBER': '14559356781'}
         # field_dict = {'CITIZEN_NAME': '徐建国', 'OLD_ID': 100119, 'GENDER': '1', 'NATIONALITY': '汉族', 'DATE_BIRTHDAY': '1990-12-27', 'REG_ADDRESS_CODE': '["安徽省","六安市","金寨县"]', 'RES_ADDRESS_CODE': '["安徽省","合肥市","包河区"]'}
         # field_dict = {'RES_ADDRESS_CODE': None, 'NATIONALITY': None, 'CITIZEN_NAME': '姓名vv', 'PHONE_NUMBER': None, 'EMAIL': None, 'DATE_BIRTHDAY': '1987-03-01', 'REG_ADDRESS_CODE': None, 'GENDER': '1', 'OLD_ID': 100243, 'DABH': '20200701183548501772'}
-        # print("field_dict",field_dict)
+        print("field_dict",field_dict)
         THROUGHT_RATE = 80  # 判断各个允许字段的总通过率是否到达该标准
         empi_formula_lines = empi_formula_df.groupby("GROUP_ID")
         allow_filed = list(key for key, value in field_dict.items() if value and key and key in personal_finish_columns) # 这条数据被允许插入或更新的字段
@@ -358,27 +389,29 @@ class BaseTransForm(object):
                         new_dict[filed] = field_dict.get(filed)
                 if len(check_list) == len(value):  # 该条数据在打分标准字段中的所有字段都出现
                     # print("item.values()",value)
-                    # print("new_dict",new_dict)
+                    print("check_new_dict",new_dict)
                     exist_DABH = self.select_finish(session,new_dict,personal_info_df,engine,schema,logger)
                     # print("exist_DABH",exist_DABH)
-                    if exist_DABH != "update":
-                        if exist_DABH:
+                    # if exist_DABH != "update":
+                    if exist_DABH:
+                        # if exist_DABH:
                             # print("exist_DABH",exist_DABH)
-                            grade = self.get_grade(group_id,empi_formula_lines)
-                            if grade >= THROUGHT_RATE:
-                                return exist_DABH
-                            else:
-                                print("field_dict1",field_dict,sep="\r\n")
-                                return None
-                        else:
-                            print("field_dict2",field_dict,sep="\r\n")
-                            return None
-                    else:
-                        return exist_DABH
-                else:
+                        grade = self.get_grade(group_id,empi_formula_lines)
+                        if grade >= THROUGHT_RATE:
+                            return exist_DABH
+                        # else:
+                        #     continue
+                        #     print("field_dict1",field_dict,sep="\r\n")
+                        #     return None
+                        # else:
+                        #     print("field_dict2",field_dict,sep="\r\n")
+                        #     return None
+                    # else:
+                    #     return exist_DABH
+                # else:
                     # print("当前组:",check_list)
                     # print("匹配组:",value)
-                    pass
+                    # pass
         else:
             print("所有组别都无法匹配到该条信息:%s"% field_dict)
                 # else:

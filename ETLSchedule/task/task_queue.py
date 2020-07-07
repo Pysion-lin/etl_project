@@ -112,7 +112,7 @@ def start_task(scheduler, task, interval, task_id, task_scheduler,task_type):
             elif task_type == 2:  # 到档案库
                 scheduler.scheduler.add_job(task_product_personal_info.get_task, trigger="interval", seconds=interval, id=task_id,
                                             args=[data_dict, task_id], next_run_time=datetime.datetime.now())  # 档案信息
-
+            elif task_type == 3:  # 检测信息库
                 scheduler.scheduler.add_job(task_product_test.get_task, trigger="interval", seconds=interval,
                                             id=task_id,
                                             args=[data_dict, task_id], next_run_time=datetime.datetime.now())  # 检测信息

@@ -90,7 +90,7 @@ class LoadData(object):
                     tb_bdm_employee = Table(table, metadata, autoload=True)
                     ins = tb_bdm_employee.insert()
                     new_dict[ins] = data
-            # print('new_dict', new_dict)
+            print('new_dict', new_dict)
             with engine.begin() as conn:
                 # conn = engine.begin()
                 for ins, data in new_dict.items():
@@ -132,8 +132,10 @@ class LoadData(object):
                 **data_dict)  # table.update().where(table.c.id==7).values(name='foo')
             # 传递参数并执行语句
             result = conn.execute(ins)
+            # print("finish_update_dict",data_dict)
             return result
         except Exception as e:
+            print("error_update_dict:",data_dict)
             file_path = os.path.join(sys.path[0], "logs",
                                      "%s.log" % datetime.datetime.strftime(datetime.datetime.now(), "%Y_%m_%d"))
             log = logger(filename=file_path)
@@ -142,6 +144,40 @@ class LoadData(object):
             traceback.print_exc()
             return None
 
+    def multi_where_update_mysql_data(self, engine, schema, table_name, data_dict, where, logger):
+        # sql_comment = 'UPDATE %s SET ' % table_name + ','.join(['%s=%r' % (k, data_dict[k]) for k in data_dict]) + ' WHERE %s=%r;' % (where[0], where[1])
+        # cursor = session.execute(sql_comment)
+        # session.commit()
+        # result = cursor.lastrowid
+        # print("cursor",cursor)
+        # print("result",result)
+        # print(cursor.lastrowid)
+        try:
+            # 绑定引擎
+            metadata = MetaData(engine)
+            # 连接数据表
+            tb_bdm_employee = Table(table_name, metadata, autoload=True)
+            # address_table = Table('address', metadata, autoload=True)
+            # 连接引擎
+            conn = engine.connect()
+            # print('where', where)
+            # print('data_dict', data_dict)
+            # for condition in where:
+            ins = tb_bdm_employee.update().where(schema.Column(where[0][0]) == where[0][1]).where(schema.Column(where[1][0])
+                            == where[1][1]).values(**data_dict)  # table.update().where(table.c.id==7).values(name='foo')
+            # 传递参数并执行语句
+            result = conn.execute(ins)
+            # print("finish_update_dict", data_dict)
+            return result
+        except Exception as e:
+            print("error_update_dict:", data_dict)
+            file_path = os.path.join(sys.path[0], "logs",
+                                     "%s.log" % datetime.datetime.strftime(datetime.datetime.now(), "%Y_%m_%d"))
+            log = logger(filename=file_path)
+            log.removeHandler(log.handlers)
+            log.info(e.__str__())
+            traceback.print_exc()
+            return None
         # return result
 
     def sql_to_mysql(self, df, target, primary_key, extract, schema, logger):
@@ -216,11 +252,12 @@ class LoadData(object):
                 else:
                     raise ValueError("主键:{} 不存在SQL语句中".format(name))
 
-    def sql_to_personal_mysql(self, df, target, extract, schema, logger):
+    def sql_to_personal_mysql(self, df, source_connect, target_connect, extract, schema, logger):
         '''
         '''
-        session = extract.create_mysql_session__(target["connect"])
-        engine = extract.create_mysql_engin__(target["connect"])
+        session = extract.create_mysql_session__(target_connect)
+        source_engine = extract.create_mysql_engin__(source_connect)
+        target_engine = extract.create_mysql_engin__(target_connect)
         try:
             pd.set_option('display.max_rows', None)
             # print('personal_info_df',df[0])
@@ -238,101 +275,131 @@ class LoadData(object):
 
             personal_info_field_list.append("DABH")
             tj_result_field_list.append("DABH")
-            if target.get("type") == 1:  # mysql方式
-                for index, row in personal_info_df.iterrows():  # 遍历个人用户信息表
-                    all_execute = []
-                    data_dict = dict(row.items())
-                    info_DABH = data_dict.get("DABH")
-                    old_id = data_dict.get("OLD_ID")
-                    personal_info_dict = data_dict
-                    tj_result_list = []  # 将对应ti_result的数据准备好
-                    tj_record_list = []  # 将tj_record数据准备好
-                    result_info_onece_df = result_info_df.query("WJ_ANSWER_MASTER_ID == %s" % old_id)
-                    for index,result_info in result_info_onece_df.iterrows():  # result_info_df数据,通过DABH与personal_info_df匹配
-                        da_dict = dict(result_info)
-                        tj_result_list.append(da_dict)
+            for index, row in personal_info_df.iterrows():  # 遍历个人用户信息表
+                all_execute = []
+                data_dict = dict(row.items())
+                info_DABH = data_dict.get("DABH")
+                old_id = data_dict.get("OLD_ID")
+                personal_info_dict = data_dict
+                tj_result_list = []  # 将对应ti_result的数据准备好
+                tj_record_list = []  # 将tj_record数据准备好
+                result_info_onece_df = result_info_df.query("WJ_ANSWER_MASTER_ID == %s" % old_id)
+                for index,result_info in result_info_onece_df.iterrows():  # result_info_df数据,通过DABH与personal_info_df匹配
+                    da_dict = dict(result_info)
+                    tj_result_list.append(da_dict)
 
-                    tj_record_onece_df = tj_record_df.query("DABH == '%s'" % info_DABH)
-                    for index,tj_record in tj_record_onece_df.iterrows():
-                        tj_record_list.append(dict(tj_record))
+                tj_record_onece_df = tj_record_df.query("DABH == '%s'" % info_DABH)
+                for index,tj_record in tj_record_onece_df.iterrows():
+                    tj_record_list.append(dict(tj_record))
 
-                    # 更新wj_answer表的DABH
-                    where = ("ID", old_id)  # 再transform时将OLD_ID添加到personal_info中,更新完wj_answer_master将其删除
-                    self.update_mysql_data(engine, schema, "wj_answer_master", {"DABH": info_DABH}, where, logger)
-                    # result = self.personal_de_weight_strategy(session,personal_info_field_list, personal_info_dict)
-                    sql = "select * from %s where %s = %s  limit 1" % ("personal_info", "DABH", info_DABH)
-                    rest = self.select_mysql_data(session, sql)
-                    # print("rest",rest)
-                    if not rest:  # 如果结果不存在,将数据插入
-                        print("INSERT:")
-                        print("info_DABH",info_DABH)
-                        print("personal_info_dict",personal_info_dict)
-                        del personal_info_dict['OLD_ID']
-                        all_execute.append({"personal_info": personal_info_dict})
-                        print("tj_record_list",tj_record_list)
+                # 更新wj_answer表的DABH
+                where = ("ID", old_id)  # 再transform时将OLD_ID添加到personal_info中,更新完wj_answer_master将其删除
+                self.update_mysql_data(source_engine, schema, "wj_answer_master", {"DABH": info_DABH}, where, logger)
+                # result = self.personal_de_weight_strategy(session,personal_info_field_list, personal_info_dict)
+                sql = "select * from %s where %s = %s  limit 1" % ("personal_info", "DABH", info_DABH)
+                rest = self.select_mysql_data(session, sql)
+                # print("rest",rest)
+                if not rest:  # 如果结果不存在,将数据插入
+                    print("INSERT:")
+                    # print("info_DABH",info_DABH)
+                    # print("personal_info_dict",personal_info_dict)
+                    del personal_info_dict['OLD_ID']
+                    all_execute.append({"personal_info": personal_info_dict})
+                    # print("tj_record_list",tj_record_list)
+                    for tj_record_dict in tj_record_list:
+                        all_execute.append({"tj_record": tj_record_dict})
+                    res = self.multi_insert_mysql_data(target_engine, all_execute, logger)
+                    # print('res:',res)
+                    if res:  # TODO 此处需要在处理当插入数据错误时,需要删除前面新建的个人信息和体检主表
+                        # print("tj_result_list",tj_result_list)
+                        for tj_result in tj_result_list:
+                            tj_result["ID_O"] = res
+                            ret = self.insert_mysql_data(target_engine, "tj_result", tj_result,logger)
+                    else:
+                        raise Exception("数据插入错误")
+
+                else:  # 如果结果存在,将数据更新
+                    # print("UPDATE:")
+                    # 更新个人信息表(通过档案编号更新)
+                    where = ("DABH", info_DABH)
+                    del personal_info_dict['OLD_ID']
+                    self.update_mysql_data(target_engine, schema, "personal_info", personal_info_dict, where, logger)
+                    # print('tmp2_table2',tmp2_table2)
+                    tj_record_ret = self.select_mysql_data(session, "select * from %s where %s=%r limit 1" % ("tj_record", "DABH", info_DABH))  # 获取该条数据个人信息下的tj_record
+                    # print("tj_record_ret",tj_record_ret)
+                    if tj_record_ret:
+                        # 更新tj_record 使用tj_record返回的ID
+                        # print("len-tj_record_list", len(tj_record_list))
+                        if len(tj_record_ret) > 1:
+                            raise Exception("tj_record出现重复的DABH")
                         for tj_record_dict in tj_record_list:
-                            all_execute.append({"tj_record": tj_record_dict})
-                        res = self.multi_insert_mysql_data(engine, all_execute, logger)
-                        # print('res:',res)
-                        if res:  # TODO 此处需要在处理当插入数据错误时,需要删除前面新建的个人信息和体检主表
-                            # print("tj_result_list",tj_result_list)
-                            for tj_result in tj_result_list:
-                                tj_result["ID_O"] = res
-                                ret = self.insert_mysql_data(engine, "tj_result", tj_result,logger)
-                        else:
-                            raise Exception("数据插入错误")
+                            where = ("ID_O", tj_record_ret[0][0])
+                            tj_record_dict["ID_O"] = tj_record_ret[0][0]
+                            ret = self.update_mysql_data(target_engine, schema, "tj_record", tj_record_dict, where, logger)
+                        # 更新或者插入tj_result
+                        # tj_result_ret = self.select_mysql_data(session, "select * from %s where %s=%r" % (
+                        #     "tj_result", "ID_O", tj_record_ret[0][0]))  # 获取该条数据个人信息下的tj_record的所有tj_result
+                        # if tj_result_ret:
+                        #     tj_result_id_list = [tj_result[0] for tj_result in tj_result_ret]
+                        #     tj_result_dict_code_list = []
+                        #     for table in tj_result_list:  # 获取个人用户信息中所有来自问卷的体检DICT_CODE,目的是根据DICT_CODE过滤查询是否存在重复的tj_result
+                        #         tj_result_dict_code_list.append(int(table.get("DICT_CODE")))
+                        #     parameter = ','.join(["%s"] * len(tj_result_id_list))
+                        #     for tj_result_dict_code in tj_result_dict_code_list:
+                        #         sql = "select * from %s where %s in (%s) and %s = %r limit 1" % ("tj_result", "TJJLID", parameter,"DICT_CODE", tj_result_dict_code)
+                        #         sql = sql % tuple(tj_result_id_list)
+                        #         rest = self.select_mysql_data(session,sql)  # 查询tj_record下对应tj_result的所有id的DICT_CODE值是否已经存在,存在则更新,不存在则插入,目的是方便每次在映射表中添加映射关系是字段添加关联的tj_result数据
+                        #         tj_result = [table for table in tj_result_list if int(table.get("DICT_CODE")) == tj_result_dict_code][0]
+                        #         tj_result = self.change_NaT(tj_result)
+                        #         if "WJ_ANSWER_MASTER_ID" in tj_result.keys():
+                        #             del tj_result["WJ_ANSWER_MASTER_ID"]
+                        #         if rest:
+                        #             where = ("TJJLID",rest[0][0])
+                        #             ret = self.update_mysql_data(target_engine, schema, "tj_result", tj_result, where, logger)
+                        #         else:
+                        #             res = tj_record_ret[0][0]
+                        #             tj_result["ID_O"] = res
+                        #             self.insert_mysql_data(target_engine, "tj_result", tj_result, logger)
+                        # else:
+                        #     for tj_result in tj_result_list:
+                        #         tj_result["ID_O"] = tj_record_ret[0][0]
+                        #         ret = self.insert_mysql_data(target_engine, "tj_result", tj_result, logger)
 
-                    else:  # 如果结果存在,将数据更新
-                        # print("UPDATE:")
-                        # 更新个人信息表(通过档案编号更新)
-                        where = ("DABH", info_DABH)
-                        del personal_info_dict['OLD_ID']
-                        self.update_mysql_data(engine, schema, "personal_info", personal_info_dict, where, logger)
-                        # print('tmp2_table2',tmp2_table2)
-                        tj_record_ret = self.select_mysql_data(session, "select * from %s where %s=%r limit 1" % ("tj_record", "DABH", info_DABH))  # 获取该条数据个人信息下的tj_record
-                        # print("tj_record_ret",tj_record_ret)
-                        if tj_record_ret:
-                            # 更新tj_record 使用tj_record返回的ID
-                            # print("len-tj_record_list", len(tj_record_list))
-                            if len(tj_record_ret) > 1:
-                                raise Exception("tj_record出现重复的DABH")
-                            for tj_record_dict in tj_record_list:
-                                where = ("ID_O", tj_record_ret[0][0])
-                                tj_record_dict["ID_O"] = tj_record_ret[0][0]
-                                ret = self.update_mysql_data(engine, schema, "tj_record", tj_record_dict, where, logger)
-                            # 更新或者插入tj_result
-                            tj_result_ret = self.select_mysql_data(session, "select * from %s where %s=%r" % (
-                                "tj_result", "ID_O", tj_record_ret[0][0]))  # 获取该条数据个人信息下的tj_record的所有tj_result
-                            if tj_result_ret:
-                                tj_result_id_list = [tj_result[0] for tj_result in tj_result_ret]
-                                tj_result_dict_code_list = []
-                                for table in tj_result_list:  # 获取个人用户信息中所有来自问卷的体检DICT_CODE,目的是根据DICT_CODE过滤查询是否存在重复的tj_result
-                                    tj_result_dict_code_list.append(int(table.get("DICT_CODE")))
-                                parameter = ','.join(["%s"] * len(tj_result_id_list))
-                                for tj_result_dict_code in tj_result_dict_code_list:
-                                    sql = "select * from %s where %s in (%s) and %s = %r limit 1" % ("tj_result", "TJJLID", parameter,"DICT_CODE", tj_result_dict_code)
-                                    sql = sql % tuple(tj_result_id_list)
-                                    rest = self.select_mysql_data(session,sql)  # 查询tj_record下对应tj_result的所有id的DICT_CODE值是否已经存在,存在则更新,不存在则插入,目的是方便每次在映射表中添加映射关系是字段添加关联的tj_result数据
-                                    tj_result = [table for table in tj_result_list if int(table.get("DICT_CODE")) == tj_result_dict_code][0]
-                                    tj_result = self.change_NaT(tj_result)
-                                    if "WJ_ANSWER_MASTER_ID" in tj_result.keys():
-                                        del tj_result["WJ_ANSWER_MASTER_ID"]
-                                    if rest:
-                                        where = ("TJJLID",rest[0][0])
-                                        ret = self.update_mysql_data(engine, schema, "tj_result", tj_result, where, logger)
-                                    else:
-                                        res = tj_record_ret[0][0]
-                                        tj_result["ID_O"] = res
-                                        self.insert_mysql_data(engine, "tj_result", tj_result, logger)
-                            else:
-                                for tj_result in tj_result_list:
+                        tj_result_ret = self.select_mysql_data(session, "select * from %s where %s=%r" % (
+                            "tj_result", "ID_O", tj_record_ret[0][0]))  # 获取该条数据个人信息下的tj_record的所有tj_result
+                        if tj_result_ret:  # 更新
+                            for table in tj_result_list:
+                                dict_code = table.get("DICT_CODE")  # 更新条件
+                                tj_result_ret = self.select_mysql_data(session, "select * from %s where %s=%r and %s=%r" % (
+                                    "tj_result", "DICT_CODE", dict_code,"ID_O",tj_record_ret[0][0]))  # 获取该条数据个人信息下的tj_record的所有tj_result
+                                tj_result = self.change_NaT(table)
+                                if "WJ_ANSWER_MASTER_ID" in tj_result.keys():
+                                    del tj_result["WJ_ANSWER_MASTER_ID"]
+                                if tj_result_ret:
+                                    where = [("ID_O",tj_record_ret[0][0]),("DICT_CODE", dict_code)]
+                                    # ret = self.update_mysql_data(target_engine, schema, "tj_result", tj_result, where, logger)
+                                    ret = self.multi_where_update_mysql_data(target_engine, schema, "tj_result",
+                                                                             tj_result, where, logger)
+                                else:
                                     tj_result["ID_O"] = tj_record_ret[0][0]
-                                    ret = self.insert_mysql_data(engine, "tj_result", tj_result, logger)
+                                    self.insert_mysql_data(target_engine, "tj_result", tj_result, logger)
                         else:
-                            for tj_record_dict in tj_record_list:
-                                self.insert_mysql_data(engine, "tj_record", tj_record_dict, logger)
-            else:
-                raise Exception("目前只支持mysql目标库")
+                            for tj_result in tj_result_list:
+                                tj_result = self.change_NaT(tj_result)
+                                if "WJ_ANSWER_MASTER_ID" in tj_result.keys():
+                                    del tj_result["WJ_ANSWER_MASTER_ID"]
+                                tj_result["ID_O"] = tj_record_ret[0][0]
+                                ret = self.insert_mysql_data(target_engine, "tj_result", tj_result, logger)
+
+                    else:
+                        for tj_record_dict in tj_record_list:
+                            ret = self.insert_mysql_data(target_engine, "tj_record", tj_record_dict, logger)
+                            for tj_result in tj_result_list:
+                                tj_result = self.change_NaT(tj_result)
+                                if "WJ_ANSWER_MASTER_ID" in tj_result.keys():
+                                    del tj_result["WJ_ANSWER_MASTER_ID"]
+                                tj_result["ID_O"] = ret
+                                ret = self.insert_mysql_data(target_engine, "tj_result", tj_result, logger)
         except Exception as e:
             traceback.print_exc()
             session.rollback()
@@ -403,9 +470,11 @@ class LoadData(object):
             # print("test_info_dict",test_info_dict)
             # print("test_sample_info",test_sample_info)
             test_info_dict = self.change_NaT(test_info_dict)
+            # print("test_info_ret",test_info_ret)
             if test_info_ret:
                 for test_sample_index, test_sample_row in test_sample_info.iterrows():
-                    test_uid = test_sample_row.get("UID")
+                    # test_uid = test_sample_row.get("UID")
+                    test_uid = test_info_ret[0][0]
                     sample_no = test_sample_row.get("SAMPLE_NO")
                     test_sample_info_dict = dict(test_sample_row)
                     test_info_sql = "select * from %s where %s = %r and %s = %r limit 1" % ("test_sample_info", "UID", test_uid,"SAMPLE_NO",sample_no)
@@ -414,17 +483,22 @@ class LoadData(object):
                     # print('test_sample_info_ret',test_sample_info_ret)
                     # print('test_sample_info_dict',test_sample_info_dict)
                     if test_sample_info_ret:
+                        if test_sample_info_dict["ID"]:
+                            del test_sample_info_dict["ID"]
                         where = ("ID", test_sample_info_ret[0][0])
                         ret = self.update_mysql_data(engine, schema, "test_sample_info", test_sample_info_dict, where, logger)
                         # print('ret',ret)
                     else:
+                        if test_sample_info_dict["ID"]:
+                            del test_sample_info_dict["ID"]
                         self.insert_mysql_data(engine, "test_sample_info", test_sample_info_dict, logger)
             else:
                 # 准备test_sample_info数据
                 all_execute = []  # 需要进行事务管理的数据列表
-                for test_sample_index,test_sample_row in test_sample_info.iterrows():
-                    all_execute.append({"test_sample_info":dict(test_sample_row)})
                 all_execute.append({"test_info": test_info_dict})
+                for test_sample_index,test_sample_row in test_sample_info.iterrows():
+                    test_sample_info_dict = self.change_NaT(dict(test_sample_row))
+                    all_execute.append({"test_sample_info":test_sample_info_dict})
                 res = self.multi_insert_mysql_data(engine, all_execute, logger)
                 # print("all_execute",all_execute)
                 # print("res",res)

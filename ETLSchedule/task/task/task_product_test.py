@@ -35,7 +35,7 @@ def get_task(data_dict,task_id):
         loader.sql_to_test_mysql(df, target_connect, extract, schema,logger)
         end = time.time()
         print("使用时间:",end-start)
-        # change_task_scheduler_status(task_id, "任务正常结束,本次花费时间:%s 秒"% int(end-start), 2)
+        change_task_scheduler_status(task_id, "任务正常结束,本次花费时间:%s 秒"% int(end-start), 2)
     except Exception as e:
         traceback.print_exc()
 
@@ -64,7 +64,7 @@ if __name__ == '__main__':
     # target = "{'connect': {'database': 'db_mid_bigdata', 'ip': '192.168.1.100', 'password': 'longseeuser01'," \
     #          " 'port': 3306, 'user': 'user01'}, 'id': 2, 'table': 'wj_answer_copy1', 'type': 1}"
 
-    target = "{'connect': {'database': 'db_mid_bigdata', 'ip': '192.168.1.100', 'password': 'longseeuser01'," \
+    target = "{'connect': {'database': 'db_bigdata', 'ip': '192.168.1.204', 'password': 'longseeuser01'," \
              " 'port': 3306, 'user': 'user01'}, 'id': 2, 'table': 'wj_answer_copy1', 'type': 1}"
     data_dict = {
                  'source': source, 'target': target,
