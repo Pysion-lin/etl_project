@@ -242,11 +242,12 @@ def task_scheduler():
     if request.method == "POST":  # 创建任务计划
         try:
             dict_data = request.json
-            if not dict_data.get("task_id") or not dict_data.get("schedule") or not dict_data.get("type"):
+            if not dict_data.get("task_id") or not dict_data.get("schedule") or not dict_data.get("type") or not dict_data.get("update"):
                 raise ValueError("参数不完整,缺少task_id 或者 schedule 或者type")
             task_id = int(dict_data.get("task_id"))
             internal = int(dict_data["schedule"])
             type_to = int(dict_data["type"])
+            update = int(dict_data["update"])
             # 提取任务处理模块
             base_task = TaskModel()
             task = base_task.query.filter_by(id=task_id).first()
@@ -259,7 +260,7 @@ def task_scheduler():
             schedule = task_schedule.query.filter_by(TaskID=random_id).first()
             if schedule:
                 raise ValueError("随机TaskID已存在,请重新提交")
-            new_task_scheduler = TaskScheduleModel(task_name=task.name,task_id=task_id,TaskID=random_id,schedule=internal,status=0,type=type_to)
+            new_task_scheduler = TaskScheduleModel(task_name=task.name,task_id=task_id,TaskID=random_id,update=update,schedule=internal,status=0,type=type_to)
             db.session.add(new_task_scheduler)
             db.session.commit()
             return jsonify({"status": 1, "data": "任务计划创建成功"})

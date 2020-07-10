@@ -58,7 +58,7 @@ class BaseTransForm(object):
         dataframe = dataframe.stack()
         return dataframe
 
-    def translate_personal_info(self, dataframe, extract, source_connect, target_connect, session,schema,logger, **kwargs):
+    def translate_personal_info(self, dataframe, extract, source_connect, target_connect, session,schema,logger,update_type, **kwargs):
         ''''
         独立函数,将wj_answer_master,wj_answer和map_table,wj_items等数据通过固定方式更新到personal_info,tj_record,tj_result中
         '''
@@ -68,6 +68,7 @@ class BaseTransForm(object):
         import re
         import pandas as pd
         pd.set_option('display.max_rows', None)
+        pd.set_option('display.max_columns', None)
         wj_answer_sql = "select * from {table} ".format(table="wj_answer")
         table2_sql1 = "select * from map_table where TARGET_TABLE = 'personal_info'"
         table2_sql2 = "select * from map_table where TARGET_TABLE = 'tj_result'"
@@ -98,7 +99,15 @@ class BaseTransForm(object):
         tj_record_df = pd.DataFrame(columns=record_df_columns)
 
         engine = extract.create_mysql_engin__(source_connect)
-        new_wj_answer_master_df = dataframe
+        # new_wj_answer_master_df = dataframe
+        # new_wj_answer_master_df = dataframe.query("ID >= 100337")
+        # new_wj_answer_master_df = dataframe
+        if update_type == 2:  # 是否增量更新
+            now_date = datetime.datetime.now().strftime("%Y-%m-%d")
+            now_date = datetime.datetime.strptime(now_date,"%Y-%m-%d")
+            new_wj_answer_master_df = dataframe.query("CREATE_TIME >= %r" % now_date)  # 只更新当天
+        else:
+            new_wj_answer_master_df = dataframe
         count_skip = 0
         # print('new_wj_answer_master_df',new_wj_answer_master_df,sep='\r\n')
         for index, wj_answer_master_row in new_wj_answer_master_df.iterrows():  # 单个用户的问卷信息
@@ -106,6 +115,15 @@ class BaseTransForm(object):
             tj_record_tmp = {}
             new_wj_answer_df = wj_answer_df.query('WJ_ANSWER_MASTER_ID == %s' % wj_answer_master_row["ID"])
             new_wj_answer_df = new_wj_answer_df.where(wj_answer_df.notnull(), None)
+            # print("new_wj_answer_df1",new_wj_answer_df)
+            '''
+            由于数据源(wj_answer)在用户更新问卷答案后,问卷系统是通过删除原始数据,插入新的数据导致旧数据ID与新
+            数据ID不一致,从而出现一个问卷对应重复答案.此处根据除WJ_ANSWER_MASTER_ID和ID外,将wj_answer中的相同
+            项删除,在处理完毕后再讲相同的问卷问题(DICT_CODE)删除
+            '''
+            new_wj_answer_df.drop_duplicates(["WJ_LISTID","WJ_LIST_CONTENT_ID","ANSWER","QUESTION_TYPE",
+                                              "QUESTION_CLASS"],keep='last',inplace=True)
+            # print("new_wj_answer_df2",new_wj_answer_df)
             if len(new_wj_answer_df) == 0:
                 count_skip += 1
             for table1_index, wj_answer_row in new_wj_answer_df.iterrows():  # 每一条问卷的信息
@@ -117,7 +135,8 @@ class BaseTransForm(object):
                     try:
                         # result = str(answer).split(",")
                         # res = re.match(r"^(?P<num>[0-9]\d*)|(?P<list>\[.+?\])$", answer)  # 回答问题可能存在字符串或者列表两种情况
-                        res = re.match(r"^(?P<str>[0-9]\d*,[0-9]\d*)|(?P<num>[0-9]\d*)|(?P<list>\[.+?\])$", answer)  # 回答问题可能存在字符串或者列表两种情况
+                        #res = re.match(r"^(?P<str>[0-9]\d*,[0-9]\d*)|(?P<num>[0-9]\d*)|(?P<list>\[.+?\])$", answer)  # 回答问题可能存在字符串或者列表两种情况
+                        res = re.match(r"^(?P<num>[0-9]\d*$)|(?P<str>(\d+,)*\d+$)|(?P<list>\[.+?\]$)", answer)  # 回答问题可能存在字符串或者列表两种情况
                         if res:
                             if res.lastgroup == "num":
                                 answer = int(res.group(0))
@@ -138,6 +157,7 @@ class BaseTransForm(object):
                         # continue  # 这条问卷信息跳出
                     all_res_df = []
                     type_check = ""
+                    # print("answer", answer,"wj_answer_master_row['ID']",wj_answer_master_row["ID"],"list_content_id",list_content_id)
                     if type(answer) is int:
                         type_check = 'int'
                         res_df = wj_items_df_3.query('ID == %s' % answer).query(
@@ -190,6 +210,7 @@ class BaseTransForm(object):
                                             tj_result_tmp.setdefault(row1["TARGET_FILED_ID"], row1["TARGET_FILED_VALUE"])
                                             # print("wj_answer_master_row: %s tj_result_tmp: %s " % (wj_answer_master_row["ID"],tj_result_tmp))
                                         elif type_check == 'list':
+                                            print('tj_result_tmp',tj_result_tmp)
                                             tmp = tj_result_tmp.get(row1["TARGET_FILED_ID"])
                                             if tmp:
                                                 tmp = tmp + "," + row1["TARGET_FILED_VALUE"]
@@ -217,8 +238,9 @@ class BaseTransForm(object):
                             TARGET_TABLE = row1.get("TARGET_TABLE")
                             if int(wj_answer_row["WJ_LIST_CONTENT_ID"]) == 9:  # 特殊处理:将年龄与数据创建日期转化为出生日期
                                 if answer:
-                                    birth_day = (wj_answer_master_row["CREATE_TIME"] - datetime.timedelta(
-                                        days=int(answer) * 365)).strftime("%Y-%m-%d")
+                                    birth_day = (datetime.datetime.strptime(datetime.datetime.strftime(
+                                        wj_answer_master_row["CREATE_TIME"],"%Y-01-01"),"%Y-%m-%d") -
+                                                 datetime.timedelta(days=int(answer) * 365)).strftime("%Y-01-01")
                                     personal_info_tmp.setdefault(row1["TARGET_FILED_ID"], birth_day)
                                 else:
                                     personal_info_tmp.setdefault(row1["TARGET_FILED_ID"], None)
@@ -249,11 +271,6 @@ class BaseTransForm(object):
                 if not wj_answer_master_row.get("DABH"):
                     DABH = self.select_personal_finish(session, personal_info_tmp, empi_formula_df,
                                                        personal_finish_columns,personal_info_df,engine,schema,logger)
-                    # if DABH == "update":  # 该条数据只需要更新源数据的DABH
-                    #     continue
-                    # else:
-                    #     if not DABH:
-                    #         DABH = self.create_DABH()
                     if not DABH:
                         DABH = self.create_DABH()
                 else:
@@ -271,33 +288,47 @@ class BaseTransForm(object):
                 tj_record_df = tj_record_df.append(new_record, ignore_index=True)
 
                 if len(personal_info_df) > 0:
+                    '''获取源数据中所有相同DABH的问卷条数'''
                     exist_personal_info_df = personal_info_df[personal_info_df.DABH == DABH]
-                    if len(exist_personal_info_df) == 1:
-                        # print("exist_personal_info_df",exist_personal_info_df)
-                        # 如果wj_answer_master存在重复的wj信息将personal_info和wj_record替换为wj_answer中最新的数据
-                        exist_id = exist_personal_info_df.get("OLD_ID")
-                        result_info_df = result_info_df.replace({int(id):int(exist_id)})
-
-        result_info_df.drop_duplicates(["DICT_CODE","WJ_ANSWER_MASTER_ID"],keep='last',inplace=True)
-        personal_info_df.drop_duplicates(["DABH"],keep='last',inplace=True)
-        tj_record_df.drop_duplicates(["DABH"],keep='last',inplace=True)
-        personal_info_df = personal_info_df.where(personal_info_df.notnull(),None)
-        result_info_df = result_info_df.where(result_info_df.notnull(),None)
-        tj_record_df = tj_record_df.where(tj_record_df.notnull(),None)
+                    '''找出历史有重复的问卷ID而且不是当前的问卷'''
+                    for exist_index,exist_personal_row in exist_personal_info_df.iterrows():
+                        exist_id = exist_personal_row.get("OLD_ID")
+                        if exist_id != personal_info_tmp["OLD_ID"]:
+                            '''将历史相同的问卷ID的对应的tj_result替换为当前的,目的是将同一个人的问卷信息合并到同一个tj_result档案信息中'''
+                            result_info_df = result_info_df.replace({int(exist_id):int(id)})
+        if len(result_info_df):
+            result_info_df.drop_duplicates(["DICT_CODE","WJ_ANSWER_MASTER_ID"],keep='last',inplace=True)
+            result_info_df = result_info_df.where(result_info_df.notnull(), None)
+        # print("personal_info_df", personal_info_df, sep='\r\n')
+        if len(personal_info_df):
+            personal_info_df = personal_info_df.groupby(["DABH"]).apply(self.fileter_nan_to_ffill)  # 将nan替换为DABH相同的上一个数据
+            personal_info_df.drop_duplicates(["DABH"], keep='last', inplace=True)
+            personal_info_df = personal_info_df.where(personal_info_df.notnull(), None)
+        if len(tj_record_df):
+            tj_record_df = tj_record_df.groupby(["DABH"]).apply(self.fileter_nan_to_ffill)  # 将nan替换为DABH相同的上一个数据
+            tj_record_df.drop_duplicates(["DABH"],keep='last',inplace=True)
+            tj_record_df = tj_record_df.where(tj_record_df.notnull(),None)
+        # print("personal_info_df", personal_info_df, sep='\r\n')
+        # print("result_info_df", result_info_df, sep='\r\n')
+        # print("tj_record_df", tj_record_df, sep='\r\n')
         # print("test_apply_detail_df", test_apply_detail_df, sep='\r\n')
         # print("tj_item_detail_df_1", tj_item_detail_df_1, sep='\r\n')
         # print("tj_items_df", tj_items_df, sep='\r\n')
-        print("personal_info_df", personal_info_df,sep='\r\n')
+        # print("personal_info_df", personal_info_df,sep='\r\n')
         # print("personal_info_df", personal_info_df[["CITIZEN_NAME","DABH","PHONE_NUMBER","GENDER","DATE_BIRTHDAY","NATIONALITY"]], sep='\r\n')
         # print("personal_info_df", personal_info_df[["OLD_ID","CITIZEN_NAME","DABH"]], sep='\r\n')
         # print("tj_record_df", tj_record_df[["ID_O","DABH","DIAGNOSE_CODE"]], sep='\r\n')
-        print("result_info_df", result_info_df[["WJ_ANSWER_MASTER_ID","CODE","CRESULT","DICT_CODE"]], sep='\r\n')
+        # print("result_info_df", result_info_df[["WJ_ANSWER_MASTER_ID","CODE","CRESULT","DICT_CODE"]], sep='\r\n')
         # print("personal_info_df", personal_info_df[["CONTACT_PHONE_NUMBER"]], sep='\r\n')
         # return
         return personal_info_df, result_info_df, personal_info_columns, result_info_columns, \
                tj_record_df
 
-    def select_finish(self, session, data_dict,personal_info_df,engine,schema,logger):
+    def fileter_nan_to_ffill(self,series):
+        series1 = series.fillna(method="ffill")
+        return series1
+
+    def select_finish(self, session, data_dict,personal_info_df,engine,schema,logger,OLD_ID):
         '''
         数据的插入和更新前对数据的查询,由于本项目使用的是先将所有的数据处理好之后插入或更新到目标库中,
         所以如果只是查询目标库是否存在已有数据一种方式可能出现第一次插入时,本身目标库中没有重复,而源数据中
@@ -320,11 +351,14 @@ class BaseTransForm(object):
         reult = self.select_mysql_data(session,sql)
         if len(reult) > 0:  # 在目标库中已存在
             print("source_personal_info_data_dict1",data_dict)
+            old_id = OLD_ID
+            info_DABH = reult[0][0]
+            where = ("ID", old_id)  # 再transform时将OLD_ID添加到personal_info中,更新完wj_answer_master将其删除
+            self.update_mysql_data(engine, schema, "wj_answer_master", {"DABH": info_DABH}, where, logger)
             return reult[0][0]
         else:
             print("target_personal_info_data_dict",data_dict)
             conditions = []
-            is_update = "update"
             for k, v in data_dict.items():
                 conditions.append("(personal_info_df." + k + " == " + "%r" % v + ")")
             condition = " & ".join(conditions)
@@ -389,8 +423,9 @@ class BaseTransForm(object):
                         new_dict[filed] = field_dict.get(filed)
                 if len(check_list) == len(value):  # 该条数据在打分标准字段中的所有字段都出现
                     # print("item.values()",value)
-                    print("check_new_dict",new_dict)
-                    exist_DABH = self.select_finish(session,new_dict,personal_info_df,engine,schema,logger)
+                    # print("check_new_dict",new_dict)
+                    OLD_ID = field_dict.get("OLD_ID")
+                    exist_DABH = self.select_finish(session,new_dict,personal_info_df,engine,schema,logger,OLD_ID)
                     # print("exist_DABH",exist_DABH)
                     # if exist_DABH != "update":
                     if exist_DABH:
@@ -399,19 +434,6 @@ class BaseTransForm(object):
                         grade = self.get_grade(group_id,empi_formula_lines)
                         if grade >= THROUGHT_RATE:
                             return exist_DABH
-                        # else:
-                        #     continue
-                        #     print("field_dict1",field_dict,sep="\r\n")
-                        #     return None
-                        # else:
-                        #     print("field_dict2",field_dict,sep="\r\n")
-                        #     return None
-                    # else:
-                    #     return exist_DABH
-                # else:
-                    # print("当前组:",check_list)
-                    # print("匹配组:",value)
-                    # pass
         else:
             print("所有组别都无法匹配到该条信息:%s"% field_dict)
                 # else:
@@ -425,7 +447,7 @@ class BaseTransForm(object):
         DABH = now + "%000000s" % random.randint(111111, 999999)
         return DABH
 
-    def translate_test(self,dataframe,extract, source_connect,target_connect, session,schema,logger):
+    def translate_test(self,dataframe,extract, source_connect,target_connect, session,schema,logger,update_type):
         '''
         独立的函数,通过中间库主表personal_acceptinfo,次表sample_info(主表和次表均从视图更新,不存在外键关联)将数据更新到正式库的test_info,test_sample_info中,
         其中:正式库中的test_info表的ID_O获取方式：personal_acceptinfo表的WJID从wj_answer_master表找到DABH，
@@ -462,7 +484,13 @@ class BaseTransForm(object):
         test_sample_info_df = pd.DataFrame(columns=test_sample_info_columns)  # 通过字段创建空的df
 
         # 步骤2:
-        for personal_index,personal_accept_info_row in dataframe.iterrows():  # personal_acceptinfo主表
+        if update_type == 2:  # 是否增量更新
+            now_date = datetime.datetime.now().strftime("%Y-%m-%d")
+            now_date = datetime.datetime.strptime(now_date, "%Y-%m-%d")
+            new_dataframe = dataframe.query("CREATE_TIME >= %r" % now_date)  # 只更新当天
+        else:
+            new_dataframe = dataframe
+        for personal_index,personal_accept_info_row in new_dataframe.iterrows():  # personal_acceptinfo主表
             wj_id = personal_accept_info_row.get("WJID")
             uid = personal_accept_info_row.get("UID")
             answer_master_df = wj_answer_master_df.query("ID == %s" % wj_id)

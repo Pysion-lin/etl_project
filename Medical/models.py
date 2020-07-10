@@ -131,6 +131,7 @@ class TaskScheduleModel(db.Model):
     task_name = db.Column(db.String)
     task_id = db.Column(db.Integer)
     TaskID = db.Column(db.String)
+    update = db.Column(db.Integer)
     schedule = db.Column(db.String)
     status = db.Column(db.Integer)
     logs = db.Column(db.String)

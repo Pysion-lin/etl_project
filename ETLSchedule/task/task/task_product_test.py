@@ -2,7 +2,7 @@ import traceback
 from ETLSchedule.utils.Logger import logger
 
 
-def get_task(data_dict,task_id):
+def get_task(data_dict,task_id,update_type):
     from ETLSchedule.ETL.extracter.extract import Extract
     from ETLSchedule.ETL.transformer.trannform import BaseTransForm
     from ETLSchedule.ETL.loader.loader import LoadData
@@ -31,7 +31,7 @@ def get_task(data_dict,task_id):
             for k, v in method.items():
                 df = df.where(df.notnull(), None)
                 func = getattr(transform, k)
-                df = func(df,extract,source_connect,target_connect,session,schema,logger)
+                df = func(df,extract,source_connect,target_connect,session,schema,logger,update_type)
         loader.sql_to_test_mysql(df, target_connect, extract, schema,logger)
         end = time.time()
         print("使用时间:",end-start)

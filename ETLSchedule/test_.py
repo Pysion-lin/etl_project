@@ -436,15 +436,17 @@ if __name__ == '__main__':
     c = "NAN"
     d = 1
     e = "天津市"
-    f = '["261"]'
+    f = '["261","234","242"]'
     g = "1"
-    h = "362,361"
+    h = "362,361,234,5635,2341,3453"
+    i = "04"
     # result = h.split(",")
     # result = g.split(",")
     # if result:
     #     print("result",result)
     # else:
-    res = re.match(r"^(?P<str>[0-9]\d*,[0-9]\d*)|(?P<num>[0-9]\d*)|(?P<list>\[.+?\])$",a)  # (?P<num>[0-9]\d*)
+    # res = re.match(r"^(?P<str>[0-9]\d*,[0-9]\d*)|(?P<num>[0-9]\d*)|(?P<list>\[.+?\])$",a)  # (?P<num>[0-9]\d*)
+    res = re.match(r"^(?P<num>[0-9]\d*$)|(?P<str>(\d+,)*\d+$)|(?P<list>\[.+?\]$)", h)
     # res = re.match(r"^(?P<str>[0-9]\d*,[0-9]\d*)$",h)  # (?P<num>[0-9]\d*)
     # res = re.match(r"(?P<num>[0-9]\d*)|(?P<list>\[.+?\])|(?P=num),(?P=num)$",h)
     print('res',res)
@@ -465,15 +467,15 @@ if __name__ == '__main__':
     # 大乐透('sss')
     # 我 = '事实上'
     # print("我",我)
-    class 中国人(object):
-        def __init__(self):
-            self.性别 = "男"
-            self.名字 = "林文森"
-
-        def 吃饭(self):
-            print(self.名字 + "正在吃饭")
-    林文森 = 中国人()
-    林文森.吃饭()
+    # class 中国人(object):
+    #     def __init__(self):
+    #         self.性别 = "男"
+    #         self.名字 = "林文森"
+    #
+    #     def 吃饭(self):
+    #         print(self.名字 + "正在吃饭")
+    # 林文森 = 中国人()
+    # 林文森.吃饭()
     # print(int(a))
     # print(a.zfill(4))
     # print(a.format("1"))

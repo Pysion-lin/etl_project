@@ -20,7 +20,7 @@ def run(scheduler):
             task_app = get_start_task()
             # 获取task
             for task in task_app:
-                start_task(scheduler, task["task"], task["interval"], task["TaskID"], task["task_scheduler"],task["type"])
+                start_task(scheduler, task["task"], task["interval"], task["TaskID"], task["task_scheduler"],task["type"],task["update_type"])
             # 修改task的status
             pause_resume_task_scheduler(scheduler,get_task_scheduler_status())
 
@@ -79,7 +79,7 @@ def get_start_task():
                 # print('task_scheduler.task_id',task_scheduler.task_id)
                 task_app.append({"task": session.query(TaskModel).filter_by(id=task_scheduler.task_id).first(),
                                  "interval": int(task_scheduler.schedule), "TaskID": task_scheduler.TaskID,
-                                 "task_scheduler": task_scheduler,"type":int(task_scheduler.type)})
+                                 "task_scheduler": task_scheduler,"type":int(task_scheduler.type),"update_type":task_scheduler.update})
         return task_app
     except Exception as e:
         traceback.print_exc()
@@ -101,21 +101,21 @@ def get_all_running_task_id(scheduler):
 
 
 # 添加任务到任务调度器中并将任务计划的状态重置为2,表示当前任务正在进行
-def start_task(scheduler, task, interval, task_id, task_scheduler,task_type):
+def start_task(scheduler, task, interval, task_id, task_scheduler,task_type,update_type):
     try:
         jod_store = get_all_running_task_id(scheduler)
         if task_id not in jod_store:
             data_dict = parse_task_parameter(task)
             if task_type == 1:  # 到中间库
                 scheduler.scheduler.add_job(task_middle.get_task, trigger="interval", seconds=interval,
-                                            id=task_id, args=[data_dict,task_id], next_run_time=datetime.datetime.now())
+                                            id=task_id, args=[data_dict,task_id,update_type], next_run_time=datetime.datetime.now())
             elif task_type == 2:  # 到档案库
                 scheduler.scheduler.add_job(task_product_personal_info.get_task, trigger="interval", seconds=interval, id=task_id,
-                                            args=[data_dict, task_id], next_run_time=datetime.datetime.now())  # 档案信息
+                                            args=[data_dict, task_id,update_type], next_run_time=datetime.datetime.now())  # 档案信息
             elif task_type == 3:  # 检测信息库
                 scheduler.scheduler.add_job(task_product_test.get_task, trigger="interval", seconds=interval,
                                             id=task_id,
-                                            args=[data_dict, task_id], next_run_time=datetime.datetime.now())  # 检测信息
+                                            args=[data_dict, task_id,update_type], next_run_time=datetime.datetime.now())  # 检测信息
 
             task_scheduler.status = 2
             session.commit()
