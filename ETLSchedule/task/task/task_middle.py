@@ -23,13 +23,18 @@ def get_task(data_dict,task_id,update_type):
         # data_dict = parse_task_parameter(task)
         start = time.time()
         source = eval(data_dict["source"])
-        target, source_connect, primary_key = eval(data_dict["target"]), source.get('connect'), eval(
+        target,primary_key = eval(data_dict["target"]),eval(
             data_dict["primary_key"])
-        extract, loader, transform, from_sql = Extract(), LoadData(), BaseTransForm(), source.get('sql')
+        extract, loader, transform= Extract(), LoadData(), BaseTransForm(),
         if int(source.get("type")) == 2:
+            source_connect,from_sql = source.get('connect'),source.get('sql')
             data_frame = extract.read_sqlserver(from_sql, source_connect)
         elif int(source.get("type")) == 1:
+            source_connect, from_sql = source.get('connect'), source.get('sql')
             data_frame = extract.read_mysql(from_sql, source_connect)
+        elif int(source.get("type")) == 3:
+            file_path = source.get('file_path')
+            data_frame = extract.read_excel(file_path)
         else:
             raise Exception("数据源不符合")
         methods = eval(data_dict["methods"])

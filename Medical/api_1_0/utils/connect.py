@@ -3,6 +3,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import MetaData, inspect,Table
 # 导入相应的模块
+import pandas as pd
 
 
 class TestConnect(object):
@@ -111,3 +112,6 @@ class TestConnect(object):
         except Exception as e:
             traceback.print_exc()
             raise ValueError("sqlserver数据库连接读取失败,{}".format(e.__str__()))
+
+    def get_excel_field(self,file):
+        pass

@@ -6,7 +6,7 @@ import traceback, random, datetime
 from Medical.api_1_0.utils.connect import TestConnect
 from Medical.api_1_0.utils import judge_empty
 from Medical.api_1_0.utils import parse_parameter
-
+import pandas as pd
 
 
 @csrf.exempt
@@ -61,10 +61,13 @@ def resource():
 def field():
     try:
         dict_data = request.json
+
         if not dict_data:
             dict_data = request.args
         if not dict_data:
             dict_data = request.data
+        if not dict_data:
+            dict_data = request.form
         if not dict_data:
             raise ValueError("参数不能为空")
         print('data_dict',dict_data)
@@ -75,9 +78,7 @@ def field():
         if not type_name:
             raise ValueError("类型名称不存在")
         # 校验参数
-        judge_empty.Judge_Empty(2, dict_data.get("connect"))
-        connect = TestConnect()
-
+        save_path = None
         if request.method == "POST":  # 获取字段
             ret = None
             if type_name == "source":  # 类型为源的字段
@@ -86,6 +87,8 @@ def field():
                     raise ValueError("sql不存在")
                 sql = sql + " "
                 if int(type_id) == 2:  # 获取连接为mysql的字段
+                    judge_empty.Judge_Empty(2, dict_data.get("connect"))
+                    connect = TestConnect()
                     connect.mysql_connect_test(dict_data.get("connect"))  # 测试是否连通
                     parse_sql = parse_parameter.get_str_btw(sql,"select","from")
                     print("parse_sql",parse_sql,type(parse_sql))
@@ -97,6 +100,8 @@ def field():
                     else:
                         ret = parse_sql
                 elif int(type_id) == 1: # 获取连接为SQLserver的字段
+                    judge_empty.Judge_Empty(2, dict_data.get("connect"))
+                    connect = TestConnect()
                     connect.sqlserver_connect_test(dict_data.get("connect"))
                     parse_sql = parse_parameter.get_str_btw1(sql, "select", "from")
                     print(type(parse_sql),parse_sql)
@@ -117,14 +122,32 @@ def field():
                 if not table:
                     raise ValueError("table不存在")
                 if int(type_id) == 2:  # 获取连接为mysql的字段
+                    judge_empty.Judge_Empty(2, dict_data.get("connect"))
+                    connect = TestConnect()
                     connect.mysql_connect_test(dict_data.get("connect"))  # 测试是否连通
                     ret = connect.get_mysql_field_from_engin(table)
                 elif int(type_id) == 1: # 获取连接为SQLserver的字段
+                    judge_empty.Judge_Empty(2, dict_data.get("connect"))
+                    connect = TestConnect()
                     connect.sqlserver_connect_test(dict_data.get("connect"))
                     ret = connect.sqlserver_get_table_field(table)
                     if not ret:
                         raise ValueError("该表格不存在")
-            return jsonify({"status": 1, "data": ret})
+            elif type_name == "Excel":  # 获取连接为Excel方式
+                import os,sys
+                files = request.files.get("file")
+                file = files.read()
+                file_name = files.filename
+                save_path = os.path.join(sys.path[0],"Medical","api_1_0","tmp",str(file_name))
+                with open(save_path,"wb") as f:
+                    f.write(file)
+                df = pd.read_excel(save_path)
+                if len(df) > 0:
+                    field = df.columns.to_list()
+                    if field:
+                        ret = field
+
+            return jsonify({"status": 1, "data": ret,"file_name":save_path})
     except ValueError as v:
         traceback.print_exc()
         return jsonify({"status": 0, "data": v.__str__()})
@@ -195,15 +218,20 @@ def task():
             dict_data = request.get_json()
             print(dict_data)
             # 校验参数
-            if not dict_data.get("source").get("type") or not dict_data.get("target").get("type") or not \
-                    dict_data.get("source").get("sql") or not dict_data.get("name") or not dict_data.get("target").get("table") \
-                    or not dict_data.get("primary_key"):
-                raise ValueError("参数不完整")
-            judge_empty.Judge_Empty(2, dict_data.get("source").get("connect"))
-            judge_empty.Judge_Empty(2, dict_data.get("target").get("connect"))
-            judge_empty.Judge_Empty(2, dict_data.get("primary_key"))
-            # for methods in dict_data.get("methods"):
-            #     judge_empty.Judge_Empty(2, methods)
+            if not dict_data.get("source").get("type"):
+                raise Exception("缺少type参数")
+            if int(dict_data.get("source").get("type")) != 3:  # 不是Excel方式
+                if not dict_data.get("source").get("type") or not dict_data.get("target").get("type") or not \
+                        dict_data.get("source").get("sql") or not dict_data.get("name") or not dict_data.get("target").get("table") \
+                        or not dict_data.get("primary_key"):
+                    raise ValueError("参数不完整")
+                judge_empty.Judge_Empty(2, dict_data.get("source").get("connect"))
+                judge_empty.Judge_Empty(2, dict_data.get("target").get("connect"))
+                judge_empty.Judge_Empty(2, dict_data.get("primary_key"))
+            else:
+                if not dict_data.get("source").get("file_path") or not dict_data.get("target").get("table") or not \
+                        dict_data.get("primary_key") or not dict_data.get("name"):
+                    raise Exception("参数不完整")
 
             instance = TaskModel.query.filter_by(name=dict_data.get("name")).first()
             if not instance:

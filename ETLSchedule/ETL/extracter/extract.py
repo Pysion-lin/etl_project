@@ -29,38 +29,17 @@ class Extract(object):
            raise ValueError(e.__str__())
         return ret
 
-    # def csv_extract(self,file_path,header=None,sep=" "):
-    #     if not file_path:
-    #         raise ValueError("请提供文件路径")
-    #     try:
-    #         ret = pd.read_csv(file_path, header=header, sep=sep)
-    #     except Exception as e:
-    #         raise ValueError(e.__str__())
-    #     return ret
-    #
-    # def ftp_extract(self):
-    #     print("i am ftp")
-    #     pass
-    #
-    # def mysql_extract(self):
-    #     print("i am mysql")
-    #     pass
-    #
-    # def url_extract(self):
-    #     print("i am url")
-    #     pass
-    #
-    # def read_json(self,url):
-    #     if not url:
-    #         re = requests.get("http://192.168.1.103:8002/kit/forwardinfo/?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpZCI6NSwiZGVwYXJ0bWVudCI6eyJpZCI6MSwibmFtZSI6Ilx1NTkyN1x1NjU3MFx1NjM2ZVx1NGUyZFx1NWZjMyJ9LCJ0ZWwiOiIxODgxNDA5NDA2MCIsIm5hbWUiOiJcdTY3OTdcdTY1ODdcdTY4ZWUiLCJuYW1lX2NvZGUiOiJsb25nc2VlIiwicGFzc3dvcmQiOiJMbDEyMzQ1Njc4OSIsImlzX3N1cGVyIjoxLCJpc19hdWRpdCI6MSwiY3JlYXRlX3RpbWUiOiIyMDIwLTA0LTI4VDAwOjAwOjAwIiwidXBkYXRlX3RpbWUiOiIyMDIwLTA1LTE2VDE2OjM2OjIwIiwiZXhwaXJlcyI6IjIwMjAtMDUtMjIgMTc6NTE6MTgifQ.gwQm_CG3Zlrv3wp2jPDvi5_VMz8z4I5MymCJ7K5A-d8&instrument_id=6")
-    #     else:
-    #         re = requests.get(url)
-    #     try:
-    #         json_data = json.dumps(eval(re.text))
-    #     except Exception as e:
-    #         raise ValueError("通过url获取的的数据不是json格式")
-    #     df = pd.read_json(json_data)
-    #     return df
+    def read_excel(self,file_path):
+        '''读取指定的Excel文件'''
+        if not file_path:
+            raise ValueError("请提供文件路径")
+        try:
+            ret = pd.read_excel(file_path)
+        except Exception as e:
+           raise ValueError(e.__str__())
+        return ret
+
+
     def create_mysql_engin__(self,connect):
         url = "mysql+pymysql://{user}:{password}@{ip}:{port}/{database}?charset=utf8".format(user=connect['user'],password=connect['password'],
                                                                                 ip=connect['ip'],port=connect['port'],database=connect['database'])
