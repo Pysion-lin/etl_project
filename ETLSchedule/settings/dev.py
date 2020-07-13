@@ -19,5 +19,6 @@ DATABASE_URL_INPUT = r"mssql+pymssql://test:test@192.168.1.100\sql2008/CRM"
 # 创建SQL Server连接
 SQLSERVER_URL = ""
 
-
+# 更新数据的前几天
+Update_DATE = 3
 

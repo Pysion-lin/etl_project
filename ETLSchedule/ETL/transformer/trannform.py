@@ -3,7 +3,7 @@ import pandas as pd
 import datetime, random, traceback,os,sys
 import numpy as np
 from ETLSchedule.models import engine, MetaData, Table
-from ETLSchedule import test_
+from ETLSchedule.utils import filter_df_for_date
 
 
 class BaseTransForm(object):
@@ -99,13 +99,8 @@ class BaseTransForm(object):
         tj_record_df = pd.DataFrame(columns=record_df_columns)
 
         engine = extract.create_mysql_engin__(source_connect)
-        # new_wj_answer_master_df = dataframe
-        # new_wj_answer_master_df = dataframe.query("ID >= 100337")
-        # new_wj_answer_master_df = dataframe
         if update_type == 2:  # 是否增量更新
-            now_date = datetime.datetime.now().strftime("%Y-%m-%d")
-            now_date = datetime.datetime.strptime(now_date,"%Y-%m-%d")
-            new_wj_answer_master_df = dataframe.query("CREATE_TIME >= %r" % now_date)  # 只更新当天
+            new_wj_answer_master_df = filter_df_for_date.filter_df("CREATE_TIME",dataframe)  # 只更新前几天
         else:
             new_wj_answer_master_df = dataframe
         count_skip = 0
@@ -402,9 +397,6 @@ class BaseTransForm(object):
         '''
 
         # 身份证号:ID_CARD_NO
-        # field_dict = {'CITIZEN_NAME': '陈小雪', 'OLD_ID': 100137, 'DATE_BIRTHDAY': '1978-01-02', 'CONTACT_PHONE_NUMBER': '14559356781'}
-        # field_dict = {'CITIZEN_NAME': '徐建国', 'OLD_ID': 100119, 'GENDER': '1', 'NATIONALITY': '汉族', 'DATE_BIRTHDAY': '1990-12-27', 'REG_ADDRESS_CODE': '["安徽省","六安市","金寨县"]', 'RES_ADDRESS_CODE': '["安徽省","合肥市","包河区"]'}
-        # field_dict = {'RES_ADDRESS_CODE': None, 'NATIONALITY': None, 'CITIZEN_NAME': '姓名vv', 'PHONE_NUMBER': None, 'EMAIL': None, 'DATE_BIRTHDAY': '1987-03-01', 'REG_ADDRESS_CODE': None, 'GENDER': '1', 'OLD_ID': 100243, 'DABH': '20200701183548501772'}
         print("field_dict",field_dict)
         THROUGHT_RATE = 80  # 判断各个允许字段的总通过率是否到达该标准
         empi_formula_lines = empi_formula_df.groupby("GROUP_ID")
@@ -485,9 +477,7 @@ class BaseTransForm(object):
 
         # 步骤2:
         if update_type == 2:  # 是否增量更新
-            now_date = datetime.datetime.now().strftime("%Y-%m-%d")
-            now_date = datetime.datetime.strptime(now_date, "%Y-%m-%d")
-            new_dataframe = dataframe.query("CREATE_TIME >= %r" % now_date)  # 只更新当天
+            new_dataframe = filter_df_for_date.filter_df("CREATE_TIME", dataframe)  # 只更新前几天
         else:
             new_dataframe = dataframe
         for personal_index,personal_accept_info_row in new_dataframe.iterrows():  # personal_acceptinfo主表

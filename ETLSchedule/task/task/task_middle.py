@@ -1,6 +1,7 @@
 import traceback,datetime
 import pandas as pd
 from ETLSchedule.utils.Logger import logger
+from ETLSchedule.utils import filter_df_for_date
 
 
 # 组装任务(该方法处理mapping功能)
@@ -33,13 +34,11 @@ def get_task(data_dict,task_id,update_type):
             raise Exception("数据源不符合")
         methods = eval(data_dict["methods"])
         columns = data_frame.columns.to_list()
-        now_date = datetime.datetime.now().strftime("%Y-%m-%d")
-        now_date = datetime.datetime.strptime(now_date, "%Y-%m-%d")
         if update_type == 2:  # 是否增量更新
             if "CREATE_TIME" in columns:
-                df = data_frame.query("CREATE_TIME >= %r" % now_date)  # 只更新当天
+                df = filter_df_for_date.filter_df("CREATE_TIME",data_frame)  # 只更新前几天
             elif "ACCEPT_DATE" in columns:
-                df = data_frame.query("ACCEPT_DATE >= %r" % now_date)  # 只更新当天
+                df = filter_df_for_date.filter_df("ACCEPT_DATE", data_frame)  # 只更新前几天
             else:
                 df = data_frame
         else:
@@ -74,15 +73,12 @@ def get_task(data_dict,task_id,update_type):
                             source_columns.append(source_column)
                             mapping_columns.append({source_column:target_column})
         if mapping_columns:  # 该任务存在至少一个映射的关系函数
-            df = change_source_hearder_target(df,mapping_columns,source_columns,target_columns)
+            if len(df) > 0:
+                df = change_source_hearder_target(df,mapping_columns,source_columns,target_columns)
+                df = change_data_type(df)
+                loader.sql_to_mysql(df, target, primary_key, extract, schema, logger)
         else:
             raise Exception("该任务至少需要一个映射函数")
-        df = change_data_type(df)
-        # print('df',df)
-        # print('df1:', df["WJID"])
-        # print('df2:', df["CREATE_TIME"])
-        # print('df3:',type(df["CREATE_TIME"]))
-        loader.sql_to_mysql(df, target, primary_key, extract,schema,logger)
         end = time.time()
         print("使用时间:", end - start)
         change_task_scheduler_status(session, task_id, "任务正常结束,本次花费时间:%s 秒"% int(end-start), 2)

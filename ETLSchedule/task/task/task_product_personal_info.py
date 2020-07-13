@@ -32,7 +32,9 @@ def get_task(data_dict,task_id,update_type):
                 df = df.where(df.notnull(), None)
                 func = getattr(transform, k)
                 df = func(df,extract,source_connect,target_connect,session,schema,logger,update_type)
-        loader.sql_to_personal_mysql(df,source_connect, target_connect, extract, schema,logger)
+        check = [True for _df in df if len(_df) > 0]
+        if len(check) == len(df):
+            loader.sql_to_personal_mysql(df,source_connect, target_connect, extract, schema,logger)
         end = time.time()
         print("使用时间:",end-start)
         change_task_scheduler_status(task_id, "任务正常结束,本次花费时间:%s 秒"% int(end-start), 2)
