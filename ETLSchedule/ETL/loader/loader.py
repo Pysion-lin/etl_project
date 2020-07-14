@@ -1,36 +1,17 @@
-from ETLSchedule.models import engine, MetaData, Table
-from ETLSchedule.models.models import EmployeeModel
+from models import engine, MetaData, Table
 import pandas as pd
-import numpy as np
-import datetime, time
+import datetime
 import traceback
 import os,sys
 
 
 class LoadData(object):
     def __init__(self):
-        # print("loadData __init__")
         pass
 
-    # @staticmethod
-    # def save_data(x):
-    # print("x", x)
-    # log_obj = HttpLogModel(domain=x[0], method=x[1], url=x[2], code=x[3])
-    # session.add(log_obj)
-    # session.commit()
-    # with open("save_data","w") as f:
-    #     f.write(x)
-    # print("save data finish")
-    # return True
     def save_data_to_mysql(self, dataframe, tb="tb_bdm_employee"):
         '''将dataframe的数据装载到mysql数据库中,tb是表名'''
         dataframe.to_sql(tb, engine, if_exists='replace', index=False)
-
-    # def load_data(self, dataframe):
-    #     print("dataframe:", dataframe[1])
-    #     # data_result = dataframe.map(self.save_data)
-    #     # data_result = dataframe.applay(self.save_data)
-    #     print("start load data")
 
     def insert_mysql_data(self, engine, table_name, data_dict, logger):
         # sql_comment = "insert into  {table_name} {filed_list}  values {data_tuple}".format(
@@ -44,24 +25,13 @@ class LoadData(object):
         try:
             # 绑定引擎
             metadata = MetaData(engine)
-
             # 连接数据表
             tb_bdm_employee = Table(table_name, metadata, autoload=True)
-            # address_table = Table('address', metadata, autoload=True)
-
             # 连接引擎
             conn = engine.connect()
-
             ins = tb_bdm_employee.insert()
-
             # 传递参数并执行语句
-            # print('insert_data_dict', data_dict)
-            # conn.transaction()
             result = conn.execute(ins, **data_dict)
-
-            # # 执行多条语句
-            # result = conn.execute(tb_bdm_employee.insert(), [data_dict])
-
             return result.lastrowid
 
         except Exception as e:
@@ -75,7 +45,6 @@ class LoadData(object):
             return None
 
     def multi_insert_mysql_data(self, engine, data_dict, logger):
-        # print('new_dict',new_dict)
         # 连接引擎
         # conn = engine.connect()
         # 传递参数并执行语句
@@ -123,16 +92,12 @@ class LoadData(object):
             metadata = MetaData(engine)
             # 连接数据表
             tb_bdm_employee = Table(table_name, metadata, autoload=True)
-            # address_table = Table('address', metadata, autoload=True)
             # 连接引擎
             conn = engine.connect()
-            # print('where', where)
-            # print('data_dict', data_dict)
             ins = tb_bdm_employee.update().where(schema.Column(where[0]) == where[1]).values(
                 **data_dict)  # table.update().where(table.c.id==7).values(name='foo')
             # 传递参数并执行语句
             result = conn.execute(ins)
-            # print("finish_update_dict",data_dict)
             return result
         except Exception as e:
             print("error_update_dict:",data_dict)
@@ -162,7 +127,6 @@ class LoadData(object):
             conn = engine.connect()
             # print('where', where)
             # print('data_dict', data_dict)
-            # for condition in where:
             ins = tb_bdm_employee.update().where(schema.Column(where[0][0]) == where[0][1]).where(schema.Column(where[1][0])
                             == where[1][1]).values(**data_dict)  # table.update().where(table.c.id==7).values(name='foo')
             # 传递参数并执行语句
@@ -336,35 +300,6 @@ class LoadData(object):
                             where = ("ID_O", tj_record_ret[0][0])
                             tj_record_dict["ID_O"] = tj_record_ret[0][0]
                             ret = self.update_mysql_data(target_engine, schema, "tj_record", tj_record_dict, where, logger)
-                        # 更新或者插入tj_result
-                        # tj_result_ret = self.select_mysql_data(session, "select * from %s where %s=%r" % (
-                        #     "tj_result", "ID_O", tj_record_ret[0][0]))  # 获取该条数据个人信息下的tj_record的所有tj_result
-                        # if tj_result_ret:
-                        #     tj_result_id_list = [tj_result[0] for tj_result in tj_result_ret]
-                        #     tj_result_dict_code_list = []
-                        #     for table in tj_result_list:  # 获取个人用户信息中所有来自问卷的体检DICT_CODE,目的是根据DICT_CODE过滤查询是否存在重复的tj_result
-                        #         tj_result_dict_code_list.append(int(table.get("DICT_CODE")))
-                        #     parameter = ','.join(["%s"] * len(tj_result_id_list))
-                        #     for tj_result_dict_code in tj_result_dict_code_list:
-                        #         sql = "select * from %s where %s in (%s) and %s = %r limit 1" % ("tj_result", "TJJLID", parameter,"DICT_CODE", tj_result_dict_code)
-                        #         sql = sql % tuple(tj_result_id_list)
-                        #         rest = self.select_mysql_data(session,sql)  # 查询tj_record下对应tj_result的所有id的DICT_CODE值是否已经存在,存在则更新,不存在则插入,目的是方便每次在映射表中添加映射关系是字段添加关联的tj_result数据
-                        #         tj_result = [table for table in tj_result_list if int(table.get("DICT_CODE")) == tj_result_dict_code][0]
-                        #         tj_result = self.change_NaT(tj_result)
-                        #         if "WJ_ANSWER_MASTER_ID" in tj_result.keys():
-                        #             del tj_result["WJ_ANSWER_MASTER_ID"]
-                        #         if rest:
-                        #             where = ("TJJLID",rest[0][0])
-                        #             ret = self.update_mysql_data(target_engine, schema, "tj_result", tj_result, where, logger)
-                        #         else:
-                        #             res = tj_record_ret[0][0]
-                        #             tj_result["ID_O"] = res
-                        #             self.insert_mysql_data(target_engine, "tj_result", tj_result, logger)
-                        # else:
-                        #     for tj_result in tj_result_list:
-                        #         tj_result["ID_O"] = tj_record_ret[0][0]
-                        #         ret = self.insert_mysql_data(target_engine, "tj_result", tj_result, logger)
-
                         tj_result_ret = self.select_mysql_data(session, "select * from %s where %s=%r" % (
                             "tj_result", "ID_O", tj_record_ret[0][0]))  # 获取该条数据个人信息下的tj_record的所有tj_result
                         if tj_result_ret:  # 更新
@@ -465,10 +400,6 @@ class LoadData(object):
             test_info_sql = "select * from %s where %s = %r limit 1" % ("test_info","UID",uid)
             test_info_ret = self.select_mysql_data(session, test_info_sql)
             test_sample_info = test_sample_info_df.query("UID == '%s'" % uid)
-            # print("uid",uid)
-            # print("test_info_ret",test_info_ret)
-            # print("test_info_dict",test_info_dict)
-            # print("test_sample_info",test_sample_info)
             test_info_dict = self.change_NaT(test_info_dict)
             # print("test_info_ret",test_info_ret)
             if test_info_ret:
@@ -500,9 +431,6 @@ class LoadData(object):
                     test_sample_info_dict = self.change_NaT(dict(test_sample_row))
                     all_execute.append({"test_sample_info":test_sample_info_dict})
                 res = self.multi_insert_mysql_data(engine, all_execute, logger)
-                # print("all_execute",all_execute)
-                # print("res",res)
-                # print("all_execute",all_execute)
 
     def methods__(self):
         return (list(filter(lambda m: not m.startswith("__") and not m.endswith("__") and callable(getattr(self, m)),

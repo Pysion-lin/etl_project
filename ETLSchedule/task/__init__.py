@@ -1,6 +1,6 @@
-from ETLSchedule.ETL.transformer.trannform import BaseTransForm
-from ETLSchedule.ETL.loader.loader import LoadData
-from ETLSchedule.ETL.extracter.extract import Extract
+from ETL.transformer.trannform import BaseTransForm
+from ETL.loader.loader import LoadData
+from ETL.extracter.extract import Extract
 
 
 # 这是一个任务工厂类

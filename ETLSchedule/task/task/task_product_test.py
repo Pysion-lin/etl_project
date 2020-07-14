@@ -1,11 +1,11 @@
 import traceback
-from ETLSchedule.utils.Logger import logger
+from utils.Logger import logger
 
 
 def get_task(data_dict,task_id,update_type):
-    from ETLSchedule.ETL.extracter.extract import Extract
-    from ETLSchedule.ETL.transformer.trannform import BaseTransForm
-    from ETLSchedule.ETL.loader.loader import LoadData
+    from ETL.extracter.extract import Extract
+    from ETL.transformer.trannform import BaseTransForm
+    from ETL.loader.loader import LoadData
     from sqlalchemy.sql import schema
     import time
     try:
@@ -46,11 +46,11 @@ def get_task(data_dict,task_id,update_type):
 def change_task_scheduler_status(task_id,e,status):
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
-    from ETLSchedule.settings.dev import DATABASE_URL
+    from settings.dev import DATABASE_URL
     engine = create_engine(DATABASE_URL, max_overflow=5)  # 创建项目数据库连接，max_overflow指定最大连接数
     DBSession = sessionmaker(engine)  # 创建项目数据库DBSession类型
     session = DBSession()  # 创建项目数据库session对象
-    from ETLSchedule.models.models import TaskScheduleModel
+    from models.models import TaskScheduleModel
     try:
         scheduler = session.query(TaskScheduleModel).filter_by(TaskID=task_id).first()
         if scheduler:

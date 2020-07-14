@@ -8,7 +8,8 @@ from Medical import create_app, db
 from flask import g
 
 # 创建flask的app
-app = create_app("develop")
+# app = create_app("develop")
+app = create_app("product")
 
 # 创建管理工具对象
 manager = Manager(app)

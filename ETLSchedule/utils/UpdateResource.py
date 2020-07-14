@@ -1,7 +1,7 @@
-from ETLSchedule.ETL.transformer.trannform import BaseTransForm
+from ETL.transformer.trannform import BaseTransForm
 from .GetFunctionArgs import get_func_args
-from ETLSchedule.models import session
-from ETLSchedule.models.models import TransformModel,TaskModel
+from models import session
+from models.models import TransformModel,TaskModel
 import traceback
 
 

@@ -1,23 +1,24 @@
 import traceback,datetime
 import pandas as pd
-from ETLSchedule.utils.Logger import logger
-from ETLSchedule.utils import filter_df_for_date
+from utils.Logger import logger
+from utils import filter_df_for_date
 
 
 # 组装任务(该方法处理mapping功能)
 def get_task(data_dict,task_id,update_type):
-    from ETLSchedule.ETL.extracter.extract import Extract
-    from ETLSchedule.ETL.transformer.trannform import BaseTransForm
-    from ETLSchedule.ETL.loader.loader import LoadData
+    from ETL.extracter.extract import Extract
+    from ETL.transformer.trannform import BaseTransForm
+    from ETL.loader.loader import LoadData
     import time
     from sqlalchemy.sql import schema
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
-    from ETLSchedule.settings.dev import DATABASE_URL
+    from settings.dev import DATABASE_URL
     engine = create_engine(DATABASE_URL, max_overflow=5)  # 创建项目数据库连接，max_overflow指定最大连接数
     DBSession = sessionmaker(engine)  # 创建项目数据库DBSession类型
     session = DBSession()  # 创建项目数据库session对象
     pd.set_option('display.max_rows', None)
+    pd.set_option('display.max_columns', None)
 
     try:
         # data_dict = parse_task_parameter(task)
@@ -52,11 +53,6 @@ def get_task(data_dict,task_id,update_type):
         mapping_columns = []
         target_columns = []
         source_columns = []
-        # def func(x):
-        #     print('x',x,type(x))
-        #     return x.replace([NaN],None)
-        # df.applymap(func)
-
         for method in methods:
             for k, v in method.items():
                 df = df.where(df.notnull(), None)
@@ -93,43 +89,15 @@ def get_task(data_dict,task_id,update_type):
         change_task_scheduler_status(session,task_id,e.__str__(),-1)
 
 
-
 # 转换df的数据类型
 def change_data_type(df):
-    from pandas.api.types import is_datetime64_any_dtype
-    import pandas as pd
-    import datetime
-    # print("type:", is_datetime64_any_dtype(df["CREATE_TIME"]))
-    # print("type:", is_datetime64_any_dtype(df["STATEID"]))
     df = df.where(df.notnull(), None)
-    # columns = df.columns.values.tolist()
-    # values = {}
-    # for column in columns:
-
-        # df[column].apply(lambda x:None if type(x) == pd.Timestamp and not x else x)
-        # values[column] = None
-        # if is_datetime64_any_dtype(df[column]) is True:  # 是否为time类型
-            # df[column].apply(lambda x: print(x, type(x)))
-            # print('column',column)
-            # df[column].apply(lambda x: datetime.datetime.strftime(x,"%Y-%m-%d %H:%M:%S") if type(x) is pd._libs.tslibs.timestamps.Timestamp else None)
-            # df["CHECK_TIME"].map(lambda x: 1)
-    #         print("column",column)
-    #         df[column].fillna(datetime.datetime.now(),inplace=True)
-            # df = df.fillna(value={column:None})
-            # if column == "CHECK_TIME":
-            #     print('column',"CHECK_TIME")
-            # df[column].apply(lambda x:if)
-            # pd.to_datetime(df[column],format='%d/%b/%Y:%H:%M:%S')
-            # pd.to_datetime(df[column],format='%Y-%m-%d %H:%S:%M',infer_datetime_format=True)
-    # print('values:',values)
-    # df = df.fillna('')  # 处理空值
-    # df = df.is  # 处理空值
     return df
 
 
 # 任务执行失败时,将对应任务状态修改为出错
 def change_task_scheduler_status(session,task_id,e,status):
-    from ETLSchedule.models.models import TaskScheduleModel
+    from models.models import TaskScheduleModel
     try:
         scheduler = session.query(TaskScheduleModel).filter_by(TaskID=task_id).first()
         if scheduler:

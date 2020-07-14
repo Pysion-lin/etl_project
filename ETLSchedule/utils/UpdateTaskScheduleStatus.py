@@ -1,5 +1,5 @@
-from ETLSchedule.models.models import TaskScheduleModel
-from ETLSchedule.models import session
+from models.models import TaskScheduleModel
+from models import session
 import traceback
 
 

@@ -2,8 +2,8 @@
 import pandas as pd
 import datetime, random, traceback,os,sys
 import numpy as np
-from ETLSchedule.models import engine, MetaData, Table
-from ETLSchedule.utils import filter_df_for_date
+from models import engine, MetaData, Table
+from utils import filter_df_for_date
 
 
 class BaseTransForm(object):

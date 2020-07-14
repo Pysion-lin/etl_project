@@ -1,13 +1,9 @@
-from ETLSchedule.models import session
-from ETLSchedule.models.models import TransformModel, TaskModel, TaskScheduleModel
+from models import session
+from models.models import TaskModel, TaskScheduleModel
 import traceback,datetime
-from ETLSchedule.ETL.extracter.extract import Extract
-from ETLSchedule.ETL.transformer.trannform import BaseTransForm
-from ETLSchedule.ETL.loader.loader import LoadData
 from sqlalchemy.exc import InternalError
-import pandas as pd
-from ETLSchedule.task.task import task_product_personal_info,task_product_test
-from ETLSchedule.task.task import task_middle
+from task.task import task_product_personal_info,task_product_test
+from task.task import task_middle
 
 
 def run(scheduler):
