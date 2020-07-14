@@ -1,5 +1,3 @@
-import sys
-print(sys.path)
 from Schedule.workscheduler import ApSchedulerProcess
 from utils import UpdateResource,UpdateTaskScheduleStatus
 from task import task_queue
