@@ -51,7 +51,8 @@ def translate_personal_info(dataframe, extract, source_connect, target_connect, 
     personal_info_df = pd.DataFrame(columns=personal_info_columns)
     result_info_df = pd.DataFrame(columns=result_info_columns)
     tj_record_df = pd.DataFrame(columns=record_df_columns)
-
+    tj_record_df.to_sql()
+    tj_record_df.merge()
     engine = extract.create_mysql_engin__(source_connect)
     new_wj_answer_master_df = dataframe
     count_skip = 0
