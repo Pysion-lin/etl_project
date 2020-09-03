@@ -53,6 +53,8 @@ def translate_personal_info(dataframe, extract, source_connect, target_connect, 
     tj_record_df = pd.DataFrame(columns=record_df_columns)
     tj_record_df.to_sql()
     tj_record_df.merge()
+    tj_record_df.query()
+    tj_record_df.filter()
     engine = extract.create_mysql_engin__(source_connect)
     new_wj_answer_master_df = dataframe
     count_skip = 0
@@ -431,38 +433,38 @@ if __name__ == '__main__':
 #     print(a)
 
     #
-    import re
-    a = "0132512343"
-    b = '["天津市","市辖区"]'
-    c = "NAN"
-    d = 1
-    e = "天津市"
-    f = '["261","234","242"]'
-    g = "1"
-    h = "362,361,234,5635,2341,3453"
-    i = "04"
+    # import re
+    # a = "0132512343"
+    # b = '["天津市","市辖区"]'
+    # c = "NAN"
+    # d = 1
+    # e = "天津市"
+    # f = '["261","234","242"]'
+    # g = "1"
+    # h = "362,361,234,5635,2341,3453"
+    # i = "04"
     # result = h.split(",")
     # result = g.split(",")
     # if result:
     #     print("result",result)
     # else:
     # res = re.match(r"^(?P<str>[0-9]\d*,[0-9]\d*)|(?P<num>[0-9]\d*)|(?P<list>\[.+?\])$",a)  # (?P<num>[0-9]\d*)
-    res = re.match(r"^(?P<num>[0-9]\d*$)|(?P<str>(\d+,)*\d+$)|(?P<list>\[.+?\]$)", h)
-    # res = re.match(r"^(?P<str>[0-9]\d*,[0-9]\d*)$",h)  # (?P<num>[0-9]\d*)
-    # res = re.match(r"(?P<num>[0-9]\d*)|(?P<list>\[.+?\])|(?P=num),(?P=num)$",h)
-    print('res',res)
-    if res:
-        print(res.lastgroup)
-        if res.lastgroup == "num":
-            ret = int(res.group(0))
-        elif res.lastgroup == "list":
-            ret = eval(res.group(0))
-        elif res.lastgroup == "str":
-            ret = "[" + str(res.group(0)) + "]"
-            ret = eval(ret)
-        else:
-            ret = None
-        print("ret",ret)
+    # res = re.match(r"^(?P<num>[0-9]\d*$)|(?P<str>(\d+,)*\d+$)|(?P<list>\[.+?\]$)", h)
+    # # res = re.match(r"^(?P<str>[0-9]\d*,[0-9]\d*)$",h)  # (?P<num>[0-9]\d*)
+    # # res = re.match(r"(?P<num>[0-9]\d*)|(?P<list>\[.+?\])|(?P=num),(?P=num)$",h)
+    # print('res',res)
+    # if res:
+    #     print(res.lastgroup)
+    #     if res.lastgroup == "num":
+    #         ret = int(res.group(0))
+    #     elif res.lastgroup == "list":
+    #         ret = eval(res.group(0))
+    #     elif res.lastgroup == "str":
+    #         ret = "[" + str(res.group(0)) + "]"
+    #         ret = eval(ret)
+    #     else:
+    #         ret = None
+    #     print("ret",ret)
     # def 大乐透(data):
     #     print(data)
     # 大乐透('sss')
@@ -534,6 +536,32 @@ if __name__ == '__main__':
         # os.system(r"touch")
         # print(file_path)
         # os.system(r"touch {}".format(file_path))
+
+    import re
+    res = re.match(r'(?P<start>^<a .*>)(?P<value>.*)(?P<stop></a>)',
+                   "<a target='_blank' href='http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Retrieve&db=PubMed&list_uids=30910422&dopt=Abstract'>The prevalence of GALM mutations that cause galactosemia: A database of functionally evaluated variants</a>")
+    #
+    # res = re.match(r'(?P<start>^<a .*>)(?P<value>.*)(?P<stop></a>)',
+    #                "Thymidylate kinase deficiency dur to mutations in TYMK is the cause of a novel vanishing white matter disease")
+
+    # Thymidylate kinase deficiency dur to mutations in TYMK is the cause of a novel vanishing white matter disease
+    # <a target='_blank' href='http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Retrieve&db=PubMed&list_uids=30910422&dopt=Abstract'>The prevalence of GALM mutations that cause galactosemia: A database of functionally evaluated variants</a>
+    if res:
+        print(res.groupdict().get("value",None))
+
+        # if res.groupdict() == "value":
+        #     print("value",res.group(2))
+
+    import requests
+    requests.get()
+    from selenium import webdriver
+
+    chrome_driver = 'D:\软件\chromedriver_win32\chromedriver.exe'  # chromedriver的文件位置
+    b = webdriver.Chrome(executable_path=chrome_driver)
+    b.get('https://pubchem.ncbi.nlm.nih.gov/#query=%s' % "111")
+    title = b.find_element_by_xpath(
+        '//*[@id="collection-results-container"]/div/div/div[2]/ul/li[1]/div/div/div/div[2]/div[3]/div[2]/span/span[2]/span/span')
+    b.find_element_by_xpath()
 
 
 

@@ -233,10 +233,13 @@ class BaseTransForm(object):
                             TARGET_TABLE = row1.get("TARGET_TABLE")
                             if int(wj_answer_row["WJ_LIST_CONTENT_ID"]) == 9:  # 特殊处理:将年龄与数据创建日期转化为出生日期
                                 if answer:
-                                    birth_day = (datetime.datetime.strptime(datetime.datetime.strftime(
-                                        wj_answer_master_row["CREATE_TIME"],"%Y-01-01"),"%Y-%m-%d") -
-                                                 datetime.timedelta(days=int(answer) * 365)).strftime("%Y-01-01")
-                                    personal_info_tmp.setdefault(row1["TARGET_FILED_ID"], birth_day)
+                                    if 0 < int(answer) < 200:  # 岁数
+                                        birth_day = (datetime.datetime.strptime(datetime.datetime.strftime(
+                                            wj_answer_master_row["CREATE_TIME"],"%Y-01-01"),"%Y-%m-%d") -
+                                                     datetime.timedelta(days=int(answer) * 365)).strftime("%Y-01-01")
+                                        personal_info_tmp.setdefault(row1["TARGET_FILED_ID"], birth_day)
+                                    else:
+                                        personal_info_tmp.setdefault(row1["TARGET_FILED_ID"], None)
                                 else:
                                     personal_info_tmp.setdefault(row1["TARGET_FILED_ID"], None)
                                 # tj_record_tmp.setdefault("DABH", DABH)

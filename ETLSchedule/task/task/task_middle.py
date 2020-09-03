@@ -39,7 +39,9 @@ def get_task(data_dict,task_id,update_type):
         else:
             raise Exception("数据源不符合")
         methods = eval(data_dict["methods"])
-        columns = data_frame.columns.to_list()
+        columns = []
+        if not data_frame.empty:
+            columns = data_frame.columns.to_list()
         if update_type == 2:  # 是否增量更新
             if "CREATE_TIME" in columns:
                 df = filter_df_for_date.filter_df("CREATE_TIME",data_frame)  # 只更新前几天

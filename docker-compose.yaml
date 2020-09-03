@@ -2,9 +2,9 @@ version: '3'
 
 services:
   etl-project:
-    image: etl_project:1.0.1
+    image: etl_project_medical:1.0.1
     build: .
-    container_name: etl-server
+    container_name: etl_medical-server
     working_dir: /code
     restart: always
     command: python manage.py runserver -h 0.0.0.0 -p 8080
