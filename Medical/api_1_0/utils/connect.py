@@ -113,5 +113,27 @@ class TestConnect(object):
             traceback.print_exc()
             raise ValueError("sqlserver数据库连接读取失败,{}".format(e.__str__()))
 
+    def sqlserver_get_field_from_pd(self,sql):
+        try:
+            with self.engine_sql_server.connect() as con, con.begin():
+                df = pd.read_sql(sql, con)  # 获取数据
+                pd.set_option("display.max.column",None)
+                con.close()
+        except Exception as e:
+            traceback.print_exc()
+            df = pd.DataFrame()
+        return df
+
+    def mysql_get_field_from_pd(self,sql):
+        try:
+            with self.engine.connect() as con, con.begin():
+                df = pd.read_sql(sql, con)  # 获取数据
+                pd.set_option("display.max.column",None)
+                con.close()
+        except Exception as e:
+            traceback.print_exc()
+            df = pd.DataFrame()
+        return df
+
     def get_excel_field(self,file):
         pass

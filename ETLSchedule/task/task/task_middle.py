@@ -40,8 +40,9 @@ def get_task(data_dict,task_id,update_type):
             raise Exception("数据源不符合")
         methods = eval(data_dict["methods"])
         columns = []
-        if not data_frame.empty:
-            columns = data_frame.columns.to_list()
+        if data_frame.empty:
+            raise Exception("读取的dataframe数据为空")
+        columns = data_frame.columns.to_list()
         if update_type == 2:  # 是否增量更新
             if "CREATE_TIME" in columns:
                 df = filter_df_for_date.filter_df("CREATE_TIME",data_frame)  # 只更新前几天
@@ -86,7 +87,7 @@ def get_task(data_dict,task_id,update_type):
         print("使用时间:", end - start)
         change_task_scheduler_status(session, task_id, "任务正常结束,本次花费时间:%s 秒"% int(end-start), 2)
     except Exception as e:
-        traceback.print_exc()
+        # traceback.print_exc()
         print("任务运行失败:{}".format(e.__str__()))
         change_task_scheduler_status(session,task_id,e.__str__(),-1)
 
@@ -119,7 +120,9 @@ def change_source_hearder_target(source_df,mapping_columns,source_columns,target
         raise Exception("source,target 不存在")
     source_df = source_df[source_columns]
     df_copy = source_df.copy()
-    for mapping in mapping_columns:
-        df_copy.rename(columns=mapping,inplace=True,copy=False)
+    new_mapping_dict = {list(item.keys())[0]:list(item.values())[0] for item in mapping_columns}
+    # for mapping in mapping_columns[::-1]:
+    #     df_copy.rename(columns=mapping,inplace=True,copy=False)
+    df_copy.rename(columns=new_mapping_dict, inplace=True, copy=False)
     df_copy = df_copy[target_columns]
     return df_copy

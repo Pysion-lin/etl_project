@@ -170,7 +170,6 @@ class LoadData(object):
                             # print('NaT',data_dict[key],key)
                             data_dict[key] = None
                     if not ret:  # 如果结果不存在,将数据插入
-                        print("row[name]", row[name])
                         self.insert_mysql_data(engine, target.get("table"), data_dict, logger)
                     else:  # 如果结果存在,将数据更新
                         where = (name, data_dict[name])

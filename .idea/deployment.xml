@@ -2,10 +2,10 @@
 <project version="4">
   <component name="PublishConfigData" autoUpload="Always" serverName="root@192.168.2.220:22">
     <serverData>
-      <paths name="root@192.168.2.220:22">
+      <paths name="root@192.168.11.38:22">
         <serverdata>
           <mappings>
-            <mapping deploy="/root/ETL" local="$PROJECT_DIR$" web="/" />
+            <mapping local="$PROJECT_DIR$" web="/" />
           </mappings>
         </serverdata>
       </paths>

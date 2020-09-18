@@ -52,7 +52,7 @@ class Extract(object):
                 con.close()
         except Exception as e:
             traceback.print_exc()
-            df = None
+            df = pd.DataFrame()
         return df
 
     def create_sqlserver_engin__(self, connect):
@@ -75,7 +75,8 @@ class Extract(object):
                 df = pd.read_sql(sql, con)  # 获取数据
                 con.close()
         except Exception as e:
-            df = None
+            traceback.print_exc()
+            df = pd.DataFrame()
         # print("read_sqlserver:", df)
         return df
         # try:

@@ -91,32 +91,43 @@ def field():
                     connect = TestConnect()
                     connect.mysql_connect_test(dict_data.get("connect"))  # 测试是否连通
                     parse_sql = parse_parameter.get_str_btw(sql,"select","from")
-                    print("parse_sql",parse_sql,type(parse_sql))
+                    df_sql = str(sql) + "limit 1"
+                    dataframe = connect.mysql_get_field_from_pd(df_sql)
+                    columns_list = dataframe.columns.tolist()
+                    # print("dataframe",dataframe)
+                    # print("columns_list",columns_list)
                     if not parse_sql:
                         raise ValueError("输入的SQL语句不符合规范")
-                    if "*" in parse_sql:
-                        table = connect.get_table(sql)
-                        ret = connect.get_mysql_field_from_engin(table)
-                    else:
-                        ret = parse_sql
+                    ret = columns_list
+                    # table = connect.get_table(sql)
+                    # ret = connect.get_mysql_field_from_engin(table)
+                    # print("ret",ret)
+                    # if "*" in parse_sql:
+                    #     table = connect.get_table(sql)
+                    #     ret = connect.get_mysql_field_from_engin(table)
+                    # else:
+                    #     ret = parse_sql
                 elif int(type_id) == 1: # 获取连接为SQLserver的字段
                     judge_empty.Judge_Empty(2, dict_data.get("connect"))
                     connect = TestConnect()
                     connect.sqlserver_connect_test(dict_data.get("connect"))
                     parse_sql = parse_parameter.get_str_btw1(sql, "select", "from")
-                    print(type(parse_sql),parse_sql)
+                    df_sql = str(sql).replace("select ","select top 1")
+                    dataframe = connect.sqlserver_get_field_from_pd(df_sql)
+                    columns_list = dataframe.columns.tolist()
                     if not parse_sql:
                         raise ValueError("输入的SQL语句不符合规范")
-                    if "*" in parse_sql:
-                        table = connect.get_table(sql)
-                        result = connect.sqlserver_get_sql_field("select top 1 * from {}".format(table))
-                        ret = [key for key in result[0]._keymap.keys()]
-                    else:
-                        if "top" in parse_sql:
-                            result = connect.sqlserver_get_sql_field(sql)
-                            ret = [key for key in result[0]._keymap.keys()]
-                        else:
-                            ret = parse_parameter.get_str_btw(sql, "select", "from")
+                    ret = columns_list
+                    # if "*" in parse_sql:
+                    #     table = connect.get_table(sql)
+                    #     result = connect.sqlserver_get_sql_field("select top 1 * from {}".format(table))
+                    #     ret = [key for key in result[0]._keymap.keys()]
+                    # else:
+                    #     if "top" in parse_sql:
+                    #         result = connect.sqlserver_get_sql_field(sql)
+                    #         ret = [key for key in result[0]._keymap.keys()]
+                    #     else:
+                    #         ret = parse_parameter.get_str_btw(sql, "select", "from")
             elif type_name == "target":  # 类型为目标的字段
                 table = dict_data.get("table")
                 if not table:
@@ -311,6 +322,7 @@ def task_scheduler():
             task_id = int(data_dict["task_id"])
             status = int(data_dict["status"])
             # status = int(data_dict["status"])
+            print("status",status,"task_id",task_id)
             task_schedule = TaskScheduleModel()
             schedule = task_schedule.query.filter_by(TaskID=task_id).first()
             if not schedule:
