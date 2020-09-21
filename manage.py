@@ -1,4 +1,4 @@
-
+# encoding=utf8
 
 
 from flask_script import Manager

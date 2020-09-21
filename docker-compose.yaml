@@ -2,16 +2,17 @@ version: '3'
 
 services:
   etl-project:
-    image: etl_project_medical:1.0.1
+    image: etl_ai_medical:1.0.1
     build: .
-    container_name: etl_medical-server
+    container_name: etl_ai_medical-server
     working_dir: /code
     restart: always
-    command: python manage.py runserver -h 0.0.0.0 -p 8080
+#    command: python manage.py runserver -h 0.0.0.0 -p 8083
+    command: uwsgi --ini uwsgi.ini
     volumes:
       - data:/code
     ports:
-      - "8010:8080"
+      - "8083:8083"
 volumes:
     data:
 
