@@ -90,6 +90,7 @@ class ApSchedulerProcess(object):
             msg = f"jobname={job.name}|jobtrigger={job.trigger}|errcode={Event.code}|exception=[{Event.exception}]|traceback=[{Event.traceback}]|scheduled_time={Event.scheduled_run_time}"
             print("任务出错,出错信息:{}".format(msg))
             self.scheduler.logger.error(msg)
+            self.pause(Event.job_id)  # 暂停任务
 
     def run(self):
         import time

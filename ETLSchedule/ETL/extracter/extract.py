@@ -58,7 +58,7 @@ class Extract(object):
     def create_sqlserver_engin__(self, connect):
         url = r"mssql+pymssql://{user}:{password}@{ip}/{database}".format(user=connect['user'],password=connect['password'],
                                                                           ip=connect['ip'],database=connect['database'])
-        engine = create_engine(url, deprecate_large_types=True)  # 创建项目数据库连接，max_overflow指定最大连接数
+        engine = create_engine(url,max_overflow=5)  # 创建项目数据库连接，max_overflow指定最大连接数
         return engine
 
     def create_sqlserver_session__(self, connect):

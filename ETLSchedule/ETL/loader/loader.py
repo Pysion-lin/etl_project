@@ -3,6 +3,7 @@ import pandas as pd
 import datetime
 import traceback
 import os,sys
+from sqlalchemy import schema
 
 
 class LoadData(object):
@@ -12,6 +13,18 @@ class LoadData(object):
     def save_data_to_mysql(self, dataframe, tb="tb_bdm_employee"):
         '''将dataframe的数据装载到mysql数据库中,tb是表名'''
         dataframe.to_sql(tb, engine, if_exists='replace', index=False)
+
+    def insert_sqlserver_data(self,engine,table_name,data_dict):
+        # 绑定引擎
+        metadata = MetaData(engine)
+        # 连接数据表
+        tb_bdm_employee = Table(table_name, metadata, autoload=True)
+        # 连接引擎
+        conn = engine.connect()
+        ins = tb_bdm_employee.insert()
+        # 传递参数并执行语句
+        result = conn.execute(ins, **data_dict)
+        return result
 
     def insert_mysql_data(self, engine, table_name, data_dict, logger):
         # sql_comment = "insert into  {table_name} {filed_list}  values {data_tuple}".format(
@@ -77,6 +90,18 @@ class LoadData(object):
     def select_mysql_data(self, session, sql_comment):
         cursor = session.execute(sql_comment)
         result = cursor.fetchall()
+        return result
+
+    def update_sqlserver_data(self,engine,table_name,data_dict,where):
+        metadata = MetaData(engine)
+        # 连接数据表
+        tb_bdm_employee = Table(table_name, metadata, autoload=True)
+        # 连接引擎
+        conn = engine.connect()
+        ins = tb_bdm_employee.update().where(schema.Column(where[0]) == where[1]).values(
+            **data_dict)  # table.update().where(table.c.id==7).values(name='foo')
+        # 传递参数并执行语句
+        result = conn.execute(ins)
         return result
 
     def update_mysql_data(self, engine, schema, table_name, data_dict, where, logger):
@@ -146,9 +171,9 @@ class LoadData(object):
 
     def sql_to_mysql(self, df, target, primary_key, extract, schema, logger):
         from pandas.api.types import is_datetime64_any_dtype
-        session = extract.create_mysql_session__(target["connect"])
-        engine = extract.create_mysql_engin__(target["connect"])
         if target.get("type") == 1:  # mysql方式
+            session = extract.create_mysql_session__(target["connect"])
+            engine = extract.create_mysql_engin__(target["connect"])
             for index, row in df.iterrows():
                 name = primary_key.get("to_primary_field")
                 if name in list(df.keys()):
@@ -181,7 +206,33 @@ class LoadData(object):
                 else:
                     raise ValueError("主键:{} 不存在SQL语句中".format(name))
         else:
-            raise Exception("目前只支持mysql目标库")
+            engine = extract.create_sqlserver_engin__(target["connect"])
+            df = df.where(df.notnull(), None)
+            for col in df.columns.to_list():
+                if is_datetime64_any_dtype(df[col]):
+                    df = df.astype({col:"str"})
+                    df[col] = df[col].map(lambda x: None if x == "NaT" else x)
+            for index,row in df.iterrows():
+                session = extract.create_sqlserver_session__(target["connect"])
+                data_dict = dict(row)
+                name = primary_key.get("to_primary_field")
+                table = target.get("table")
+                if name not in list(df.keys()):
+                    raise Exception("更新主键字段不存在")
+                search_data = {name:data_dict.get(name)}
+                where = "and".join(" %s='%s' " % (k, v) if v else " %s is null " % (k) for k, v in
+                                   search_data.items())
+                sql_ = "select %s from %s where %s" % (name,table,where)
+                res = self.select_mysql_data(session, sql_)
+                if res:
+                    _id = res[0][0]
+                    where = (name,_id)
+                    del data_dict[name]
+                    self.update_sqlserver_data(engine,table,data_dict,where)
+                else:
+                    results = self.insert_sqlserver_data(engine, table, data_dict)
+                session.close()
+            # raise Exception("目前只支持mysql目标库")
 
     def serial_sql_to_mysql(self, df, target, primary_key, extract, schema, logger):
         session = extract.create_mysql_session__(target["connect"])

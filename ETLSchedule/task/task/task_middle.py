@@ -42,7 +42,7 @@ def get_task(data_dict,task_id,update_type):
         columns = []
         if data_frame.empty:
             raise Exception("读取的dataframe数据为空")
-        columns = data_frame.columns.to_list()
+        columns = [str(data).upper() for data in data_frame.columns.to_list()]
         if update_type == 2:  # 是否增量更新
             if "CREATE_TIME" in columns:
                 df = filter_df_for_date.filter_df("CREATE_TIME",data_frame)  # 只更新前几天
