@@ -4,7 +4,7 @@ APScheduler==3.6.3
 attrs==19.3.0
 backcall==0.1.0
 beautifulsoup4==4.9.1
-bleach==3.1.5
+bleach==3.3.0
 cachelib==0.1
 certifi==2020.4.5.1
 cffi==1.14.0
